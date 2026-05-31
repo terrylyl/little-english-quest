@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent } from 'react';
+import { useState, type KeyboardEvent, type TouchEvent } from 'react';
 import type { SpeechPlayer } from '../domain/audio';
 import type { LevelNumber, Theme, WordEntry } from '../domain/content';
 import {
@@ -44,6 +44,16 @@ export function LessonScreen({ theme, level, player, onBack, onComplete }: Lesso
       return;
     }
 
+    event.preventDefault();
+    setLesson((current) => stopSpeaking(current));
+  }
+
+  function handleSpeakTouchStart(event: TouchEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    setLesson((current) => startSpeaking(current));
+  }
+
+  function handleSpeakTouchEnd(event: TouchEvent<HTMLButtonElement>) {
     event.preventDefault();
     setLesson((current) => stopSpeaking(current));
   }
@@ -135,6 +145,11 @@ export function LessonScreen({ theme, level, player, onBack, onComplete }: Lesso
             onPointerDown={() => setLesson((current) => startSpeaking(current))}
             onPointerUp={() => setLesson((current) => stopSpeaking(current))}
             onPointerCancel={() => setLesson((current) => stopSpeaking(current))}
+            onPointerLeave={() => setLesson((current) => stopSpeaking(current))}
+            onTouchStart={handleSpeakTouchStart}
+            onTouchEnd={handleSpeakTouchEnd}
+            onTouchCancel={handleSpeakTouchEnd}
+            onContextMenu={(event) => event.preventDefault()}
             onKeyDown={handleSpeakKeyDown}
             onKeyUp={handleSpeakKeyUp}
           >

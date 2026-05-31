@@ -99,4 +99,25 @@ describe('App flow', () => {
     fireEvent.keyUp(holdButton, { key: 'Enter', code: 'Enter' });
     expect(holdButton).toHaveAttribute('aria-pressed', 'false');
   });
+
+  it('updates Hold to say pressed state from touch controls', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /Animals/ }));
+    await user.click(screen.getByRole('button', { name: /Start/ }));
+    await user.click(screen.getByRole('button', { name: /I know these words/ }));
+    await user.click(screen.getByRole('button', { name: /cat/ }));
+    await user.click(screen.getByRole('button', { name: /Next/ }));
+
+    const holdButton = screen.getByRole('button', { name: /Hold to say/ });
+
+    fireEvent.touchStart(holdButton);
+    expect(holdButton).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('status')).toHaveTextContent(/Listening/);
+
+    fireEvent.touchEnd(holdButton);
+    expect(holdButton).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('status')).toHaveTextContent(/Ready to speak/);
+  });
 });
