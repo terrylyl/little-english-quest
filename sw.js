@@ -1,12 +1,13 @@
-const CACHE_NAME = 'little-english-quest-v2';
+const CACHE_NAME = 'little-english-quest-v3';
+const appUrl = (path) => new URL(path, self.registration.scope).toString();
 const APP_SHELL = [
-  '/',
-  '/index.html',
-  '/manifest.webmanifest',
-  '/icon.svg',
-  '/icon-192.png',
-  '/icon-512.png'
-];
+  './',
+  './index.html',
+  './manifest.webmanifest',
+  './icon.svg',
+  './icon-192.png',
+  './icon-512.png'
+].map(appUrl);
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
@@ -32,7 +33,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (event.request.mode === 'navigate') {
-    event.respondWith(fetch(event.request).catch(() => caches.match('/index.html')));
+    event.respondWith(fetch(event.request).catch(() => caches.match(appUrl('./index.html'))));
     return;
   }
 
