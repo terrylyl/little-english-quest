@@ -253,6 +253,11 @@ h1 {
   color: #ffffff;
 }
 
+.voice-playback {
+  width: min(320px, 100%);
+  min-height: 44px;
+}
+
 .reward-badge {
   width: 144px;
   height: 144px;

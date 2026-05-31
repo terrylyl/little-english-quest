@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent, type TouchEvent } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent, type TouchEvent } from 'react';
 import type { SpeechPlayer } from '../domain/audio';
 import type { LevelNumber, Theme, WordEntry } from '../domain/content';
 import {
@@ -18,9 +18,29 @@ type LessonScreenProps = {
   onComplete: () => void;
 };
 
+type VoiceCapture = {
+  recorder?: MediaRecorder;
+  stream?: MediaStream;
+  chunks: Blob[];
+  stopWhenReady: boolean;
+};
+
 export function LessonScreen({ theme, level, player, onBack, onComplete }: LessonScreenProps) {
   const levelWords = theme.words.filter((word) => word.level === level);
   const [lesson, setLesson] = useState(() => createLessonState(theme.id, level, levelWords));
+  const [voiceUrl, setVoiceUrl] = useState<string | null>(null);
+  const [voiceMessage, setVoiceMessage] = useState('Ready to speak.');
+  const voiceCapture = useRef<VoiceCapture | null>(null);
+  const voiceUrlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      voiceCapture.current?.stream?.getTracks().forEach((track) => track.stop());
+      if (voiceUrlRef.current) {
+        URL.revokeObjectURL(voiceUrlRef.current);
+      }
+    };
+  }, []);
 
   function say(word: WordEntry) {
     player.speak(word.word);
@@ -36,7 +56,7 @@ export function LessonScreen({ theme, level, player, onBack, onComplete }: Lesso
     }
 
     event.preventDefault();
-    setLesson((current) => startSpeaking(current));
+    void startVoiceCapture();
   }
 
   function handleSpeakKeyUp(event: KeyboardEvent<HTMLButtonElement>) {
@@ -45,17 +65,114 @@ export function LessonScreen({ theme, level, player, onBack, onComplete }: Lesso
     }
 
     event.preventDefault();
-    setLesson((current) => stopSpeaking(current));
+    stopVoiceCapture();
   }
 
   function handleSpeakTouchStart(event: TouchEvent<HTMLButtonElement>) {
     event.preventDefault();
-    setLesson((current) => startSpeaking(current));
+    void startVoiceCapture();
   }
 
   function handleSpeakTouchEnd(event: TouchEvent<HTMLButtonElement>) {
     event.preventDefault();
+    stopVoiceCapture();
+  }
+
+  async function startVoiceCapture() {
+    if (voiceCapture.current) {
+      return;
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+      setVoiceMessage('Microphone recording is not supported on this browser.');
+      return;
+    }
+
+    if (voiceUrlRef.current) {
+      URL.revokeObjectURL(voiceUrlRef.current);
+      voiceUrlRef.current = null;
+      setVoiceUrl(null);
+    }
+
+    const capture: VoiceCapture = { chunks: [], stopWhenReady: false };
+    voiceCapture.current = capture;
+    setLesson((current) => startSpeaking(current));
+    setVoiceMessage('Listening now.');
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      capture.stream = stream;
+
+      const recorder = new MediaRecorder(stream);
+      capture.recorder = recorder;
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          capture.chunks.push(event.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        finishVoiceCapture(capture);
+      };
+
+      recorder.start();
+
+      if (capture.stopWhenReady) {
+        stopVoiceCapture();
+      }
+    } catch {
+      finishVoiceCapture(capture, 'Microphone access was blocked.');
+    }
+  }
+
+  function stopVoiceCapture() {
+    const capture = voiceCapture.current;
     setLesson((current) => stopSpeaking(current));
+
+    if (!capture) {
+      setVoiceMessage((current) => (current === 'Listening now.' ? 'Ready to speak.' : current));
+      return;
+    }
+
+    if (!capture.recorder) {
+      capture.stopWhenReady = true;
+      return;
+    }
+
+    if (capture.recorder.state === 'recording') {
+      capture.recorder.stop();
+      return;
+    }
+
+    finishVoiceCapture(capture);
+  }
+
+  function finishVoiceCapture(capture: VoiceCapture, errorMessage?: string) {
+    if (voiceCapture.current !== capture) {
+      return;
+    }
+
+    capture.stream?.getTracks().forEach((track) => track.stop());
+    voiceCapture.current = null;
+    setLesson((current) => stopSpeaking(current));
+
+    if (errorMessage) {
+      setVoiceMessage(errorMessage);
+      return;
+    }
+
+    if (capture.chunks.length === 0) {
+      setVoiceMessage('Hold a little longer and try again.');
+      return;
+    }
+
+    const type = capture.recorder?.mimeType || capture.chunks[0].type || 'audio/webm';
+    const recording = new Blob(capture.chunks, { type });
+    const nextUrl = URL.createObjectURL(recording);
+    voiceUrlRef.current = nextUrl;
+    setVoiceUrl(nextUrl);
+    setVoiceMessage('Nice speaking. Tap play to hear it.');
   }
 
   if (lesson.step === 'reward') {
@@ -142,10 +259,10 @@ export function LessonScreen({ theme, level, player, onBack, onComplete }: Lesso
             className={`mic-button${lesson.isRecording ? ' is-recording' : ''}`}
             type="button"
             aria-pressed={lesson.isRecording}
-            onPointerDown={() => setLesson((current) => startSpeaking(current))}
-            onPointerUp={() => setLesson((current) => stopSpeaking(current))}
-            onPointerCancel={() => setLesson((current) => stopSpeaking(current))}
-            onPointerLeave={() => setLesson((current) => stopSpeaking(current))}
+            onPointerDown={() => void startVoiceCapture()}
+            onPointerUp={stopVoiceCapture}
+            onPointerCancel={stopVoiceCapture}
+            onPointerLeave={stopVoiceCapture}
             onTouchStart={handleSpeakTouchStart}
             onTouchEnd={handleSpeakTouchEnd}
             onTouchCancel={handleSpeakTouchEnd}
@@ -156,8 +273,11 @@ export function LessonScreen({ theme, level, player, onBack, onComplete }: Lesso
             Hold to say
           </button>
           <p className="feedback" role="status" aria-live="polite">
-            {lesson.isRecording ? 'Listening now.' : 'Ready to speak.'}
+            {voiceMessage}
           </p>
+          {voiceUrl && (
+            <audio className="voice-playback" controls src={voiceUrl} aria-label="Hear your voice" />
+          )}
           <button className="primary-action" type="button" onClick={() => setLesson((current) => advanceLesson(current))}>
             Finish
           </button>

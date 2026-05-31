@@ -16,6 +16,10 @@ export default defineConfig({
   use: {
     baseURL: 'http://127.0.0.1:4173',
     ...(browserChannel ? { channel: browserChannel } : {}),
+    permissions: ['microphone'],
+    launchOptions: {
+      args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream']
+    },
     trace: 'on-first-retry'
   },
   projects: [

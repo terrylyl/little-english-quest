@@ -1,11 +1,38 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../App';
 
+class MockMediaRecorder {
+  static instances: MockMediaRecorder[] = [];
+  mimeType = 'audio/webm';
+  ondataavailable: ((event: BlobEvent) => void) | null = null;
+  onstop: (() => void) | null = null;
+  state: RecordingState = 'inactive';
+  start = vi.fn(() => {
+    this.state = 'recording';
+  });
+  stop = vi.fn(() => {
+    this.state = 'inactive';
+    this.ondataavailable?.({ data: new Blob(['voice'], { type: 'audio/webm' }) } as BlobEvent);
+    this.onstop?.();
+  });
+
+  constructor() {
+    MockMediaRecorder.instances.push(this);
+  }
+}
+
 describe('App flow', () => {
+  const stopTrack = vi.fn();
+  const createObjectURL = vi.fn(() => 'blob:recording');
+
   beforeEach(() => {
     localStorage.clear();
+    vi.restoreAllMocks();
+    stopTrack.mockClear();
+    createObjectURL.mockClear();
+    MockMediaRecorder.instances = [];
     Object.defineProperty(window, 'speechSynthesis', {
       configurable: true,
       value: {
@@ -25,6 +52,26 @@ describe('App flow', () => {
           this.text = text;
         }
       }
+    });
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: {
+        getUserMedia: vi.fn().mockResolvedValue({
+          getTracks: () => [{ stop: stopTrack }]
+        })
+      }
+    });
+    Object.defineProperty(window, 'MediaRecorder', {
+      configurable: true,
+      value: MockMediaRecorder
+    });
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      value: createObjectURL
+    });
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      configurable: true,
+      value: vi.fn()
     });
   });
 
@@ -91,13 +138,14 @@ describe('App flow', () => {
 
     fireEvent.keyUp(holdButton, { key: ' ', code: 'Space' });
     expect(holdButton).toHaveAttribute('aria-pressed', 'false');
-    expect(screen.getByRole('status')).toHaveTextContent(/Ready to speak/);
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/Nice speaking/));
 
     fireEvent.keyDown(holdButton, { key: 'Enter', code: 'Enter' });
     expect(holdButton).toHaveAttribute('aria-pressed', 'true');
 
     fireEvent.keyUp(holdButton, { key: 'Enter', code: 'Enter' });
     expect(holdButton).toHaveAttribute('aria-pressed', 'false');
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/Nice speaking/));
   });
 
   it('updates Hold to say pressed state from touch controls', async () => {
@@ -118,6 +166,33 @@ describe('App flow', () => {
 
     fireEvent.touchEnd(holdButton);
     expect(holdButton).toHaveAttribute('aria-pressed', 'false');
-    expect(screen.getByRole('status')).toHaveTextContent(/Ready to speak/);
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/Nice speaking/));
+  });
+
+  it('records the child voice while Hold to say is pressed and offers playback', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /Animals/ }));
+    await user.click(screen.getByRole('button', { name: /Start/ }));
+    await user.click(screen.getByRole('button', { name: /I know these words/ }));
+    await user.click(screen.getByRole('button', { name: /cat/ }));
+    await user.click(screen.getByRole('button', { name: /Next/ }));
+
+    const holdButton = screen.getByRole('button', { name: /Hold to say/ });
+
+    fireEvent.touchStart(holdButton);
+
+    await waitFor(() => expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledWith({ audio: true }));
+    await waitFor(() => expect(MockMediaRecorder.instances[0].start).toHaveBeenCalled());
+    expect(holdButton).toHaveAttribute('aria-pressed', 'true');
+
+    fireEvent.touchEnd(holdButton);
+
+    await waitFor(() => expect(MockMediaRecorder.instances[0].stop).toHaveBeenCalled());
+    expect(stopTrack).toHaveBeenCalled();
+    expect(createObjectURL).toHaveBeenCalled();
+    expect(screen.getByLabelText(/Hear your voice/)).toHaveAttribute('src', 'blob:recording');
+    expect(screen.getByRole('status')).toHaveTextContent(/Nice speaking/);
   });
 });
