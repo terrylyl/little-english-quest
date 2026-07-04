@@ -26,7 +26,7 @@ test('child can complete the first animal level', async ({ page }) => {
   await expect(page.getByRole('heading', { name: /Sticker earned/ })).toBeVisible();
 });
 
-test('explore mode shows twelve animal words', async ({ page }) => {
+test('explore mode shows fifty animal words', async ({ page }) => {
   await page.goto('/');
 
   await page.getByRole('button', { name: /Animals/ }).click();
@@ -44,6 +44,6 @@ test('earned sticker persists after refresh', async ({ page }) => {
   await page.reload();
   await page.getByRole('button', { name: /Animals/ }).click();
 
-  await expect(page.getByText('1/3 levels done')).toBeVisible();
+  await expect(page.getByText('1/5 levels done')).toBeVisible();
   await expect(page.getByRole('button', { name: /Level 1 Star/ })).toBeVisible();
 });

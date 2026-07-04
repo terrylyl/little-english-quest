@@ -11,11 +11,22 @@ import {
 describe('lesson state machine', () => {
   const words = getLevelWords('animals', 1);
 
-  it('starts on the learn step with four words', () => {
+  it('starts on the learn step with ten words', () => {
     const state = createLessonState('animals', 1, words);
 
     expect(state.step).toBe('learn');
-    expect(state.words.map((word) => word.word)).toEqual(['cat', 'dog', 'bird', 'fish']);
+    expect(state.words.map((word) => word.word)).toEqual([
+      'cat',
+      'dog',
+      'bird',
+      'fish',
+      'rabbit',
+      'duck',
+      'cow',
+      'pig',
+      'horse',
+      'sheep'
+    ]);
     expect(state.promptWord.word).toBe('cat');
   });
 

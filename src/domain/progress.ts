@@ -1,8 +1,7 @@
-import type { LevelNumber, ThemeId } from './content';
+import { LEVEL_NUMBERS, type LevelNumber, type ThemeId } from './content';
 
 const STORAGE_KEY = 'little-english-progress-v1';
 const THEME_IDS = ['animals', 'fruits', 'food'] as const satisfies readonly ThemeId[];
-const LEVEL_NUMBERS = [1, 2, 3] as const satisfies readonly LevelNumber[];
 
 export type ProgressState = {
   completedLevels: Record<ThemeId, LevelNumber[]>;
@@ -107,7 +106,7 @@ export function completeLevel(
     recentTheme: themeId,
     completedLevels: {
       ...progress.completedLevels,
-      [themeId]: Array.from(completed).sort()
+      [themeId]: Array.from(completed).sort((a, b) => a - b)
     },
     stickers: {
       ...progress.stickers,

@@ -14,7 +14,7 @@
 
 - 孩子打开链接后，不需要阅读说明，就能开始一次 3-5 分钟的学习。
 - 孩子能通过点图、听音、选图、跟读完成一个主题关卡。
-- 学习内容覆盖动物、水果、食物 3 个主题，每个主题 12 个词。
+- 学习内容覆盖动物、水果、食物 3 个主题，每个主题 50 个词。
 - 每个主题能自由探索，也能按关卡学习。
 - 进度和贴纸奖励能在本机保留。
 - 应用可以通过浏览器链接分享，并具备基础 PWA 能力。
@@ -59,25 +59,31 @@
 
 ## 内容结构
 
-第一版包含 3 个主题，每个主题 12 个词，总计 36 个词。每个主题拆成 3 个关卡，每关 4 个词。
+第一版包含 3 个主题，每个主题 50 个词，总计 150 个词。每个主题拆成 5 个关卡，每关 10 个词。
 
 ### Animals
 
-- Level 1: cat, dog, bird, fish
-- Level 2: rabbit, duck, cow, pig
-- Level 3: lion, tiger, elephant, monkey
+- Level 1: cat, dog, bird, fish, rabbit, duck, cow, pig, horse, sheep
+- Level 2: lion, tiger, elephant, monkey, bear, panda, giraffe, zebra, kangaroo, koala
+- Level 3: mouse, frog, turtle, snake, fox, wolf, deer, goat, hen, rooster
+- Level 4: bee, butterfly, ant, spider, whale, dolphin, shark, penguin, seal, octopus
+- Level 5: owl, eagle, parrot, peacock, camel, donkey, squirrel, hedgehog, hippo, rhino
 
 ### Fruits
 
-- Level 1: apple, banana, orange, grape
-- Level 2: strawberry, watermelon, pear, peach
-- Level 3: mango, pineapple, lemon, cherry
+- Level 1: apple, banana, orange, grape, strawberry, watermelon, pear, peach, mango, pineapple
+- Level 2: lemon, cherry, blueberry, raspberry, blackberry, kiwi, melon, coconut, papaya, plum
+- Level 3: apricot, fig, guava, lychee, pomegranate, dragon fruit, passion fruit, star fruit, grapefruit, lime
+- Level 4: tangerine, mandarin, nectarine, cantaloupe, honeydew, cranberry, date, persimmon, quince, jackfruit
+- Level 5: durian, rambutan, longan, gooseberry, currant, mulberry, boysenberry, breadfruit, soursop, plantain
 
 ### Food
 
-- Level 1: milk, bread, egg, rice
-- Level 2: cake, cookie, cheese, noodles
-- Level 3: chicken, soup, pizza, ice cream
+- Level 1: milk, bread, egg, rice, cake, cookie, cheese, noodles, chicken, soup
+- Level 2: pizza, pasta, sandwich, hamburger, hot dog, fries, pancake, waffle, cereal, yogurt
+- Level 3: salad, carrot, potato, tomato, corn, peas, beans, broccoli, cucumber, pumpkin
+- Level 4: fish, beef, pork, sausage, bacon, meatball, dumpling, sushi, taco, burrito
+- Level 5: ice cream, chocolate, candy, popcorn, cracker, muffin, donut, pie, jam, honey
 
 ### 词条数据
 
@@ -127,7 +133,7 @@
 - 学习进度，例如 1/3
 - Start 按钮
 - Explore 按钮
-- 3 个关卡入口
+- 5 个关卡入口
 
 关卡可以顺序解锁。未完成前置关卡时，后续关卡可以显示但不强调，避免孩子被复杂状态干扰。
 
@@ -144,7 +150,7 @@
 
 ### Explore 自由图鉴
 
-自由图鉴展示当前主题 12 个词的图片网格。孩子点任意图片后：
+自由图鉴展示当前主题 50 个词的图片网格。孩子点任意图片后：
 
 - 播放英文单词。
 - 显示英文单词。
@@ -224,7 +230,7 @@ MVP 可以使用统一风格插画、emoji 或开源图片作为临时素材。�
 
 - Home 首页
 - Animals / Fruits / Food 三个主题页
-- 每个主题 3 个关卡
+- 每个主题 5 个关卡
 - Learn / Listen / Speak / Reward 四步流程
 - Explore 自由图鉴
 - 本地进度和贴纸奖励
@@ -256,18 +262,18 @@ MVP 可以使用统一风格插画、emoji 或开源图片作为临时素材。�
 第一版完成后需要验证：
 
 - 首页在手机和平板上是否无需说明即可开始。
-- 每个主题是否能完成 3 个关卡。
+- 每个主题是否能完成 5 个关卡。
 - Listen 步骤是否能正确判断选择。
 - Speak 步骤是否能正常完成按住和松开的交互。
 - Reward 是否正确发放贴纸。
-- Explore 是否能播放 12 个词。
+- Explore 是否能播放 50 个词。
 - 刷新页面后进度是否保留。
 - PWA manifest 是否可被浏览器识别。
 - 文本和按钮在移动端不重叠、不溢出。
 
 ## 风险与取舍
 
-最大风险是第一版内容量偏大。3 个主题、36 个词比典型 MVP 更重，因此实现时要控制每个词的资源复杂度，优先完成可玩的学习闭环，再打磨插画和声音质量。
+最大风险是第一版内容量偏大。3 个主题、150 个词比典型 MVP 更重，因此实现时要控制每个词的资源复杂度，优先完成可玩的学习闭环，再打磨插画和声音质量。
 
 第二个风险是语音合成质量不稳定。为降低风险，音频模块需要能平滑切换到静态音频文件。
 
@@ -280,6 +286,6 @@ MVP 可以使用统一风格插画、emoji 或开源图片作为临时素材。�
 - 第一版平台：Web/PWA。
 - 第一版学习目标：听懂和认词为主，少量跟读。
 - 第一版主题：动物、水果、食物。
-- 每个主题词量：12 个。
+- 每个主题词量：50 个。
 - 核心产品方案：闯关学习 + 自由图鉴。
 - 前端实现阶段使用 `frontend-design` skill。

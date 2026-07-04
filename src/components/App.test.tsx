@@ -92,7 +92,7 @@ describe('App flow', () => {
 
     expect(screen.getByRole('heading', { name: /Animals words/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /cat/ })).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /Say/ })).toHaveLength(12);
+    expect(screen.getAllByRole('button', { name: /Say/ })).toHaveLength(50);
   });
 
   it('completes the first animal level and stores progress', async () => {

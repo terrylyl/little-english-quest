@@ -49,11 +49,11 @@ describe('progress persistence', () => {
   });
 
   it('does not duplicate completed levels or stickers', () => {
-    const once = completeLevel(createInitialProgress(), 'food', 3);
-    const twice = completeLevel(once, 'food', 3);
+    const once = completeLevel(createInitialProgress(), 'food', 5);
+    const twice = completeLevel(once, 'food', 5);
 
-    expect(twice.completedLevels.food).toEqual([3]);
-    expect(twice.stickers.food).toEqual(['food-sticker-3']);
+    expect(twice.completedLevels.food).toEqual([5]);
+    expect(twice.stickers.food).toEqual(['food-sticker-5']);
     expect(getCompletedCount(twice, 'food')).toBe(1);
   });
 
@@ -63,13 +63,13 @@ describe('progress persistence', () => {
       JSON.stringify({
         completedLevels: {
           animals: 'not-an-array',
-          fruits: [1, 4, 2],
-          food: [3, '2']
+          fruits: [1, 6, 4, 2],
+          food: [5, '2']
         },
         stickers: {
           animals: ['animals-sticker-1', 7],
           fruits: 'not-an-array',
-          food: [false, 'food-sticker-3']
+          food: [false, 'food-sticker-5']
         },
         recentTheme: 'space'
       })
@@ -78,13 +78,13 @@ describe('progress persistence', () => {
     expect(loadProgress()).toEqual({
       completedLevels: {
         animals: [],
-        fruits: [1, 2],
-        food: [3]
+        fruits: [1, 4, 2],
+        food: [5]
       },
       stickers: {
         animals: ['animals-sticker-1'],
         fruits: [],
-        food: ['food-sticker-3']
+        food: ['food-sticker-5']
       },
       recentTheme: 'animals'
     });

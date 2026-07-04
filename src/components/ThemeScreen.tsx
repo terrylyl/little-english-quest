@@ -1,4 +1,4 @@
-import type { LevelNumber, Theme } from '../domain/content';
+import { LEVEL_NUMBERS, type LevelNumber, type Theme } from '../domain/content';
 import { getCompletedCount, type ProgressState } from '../domain/progress';
 import { StickerShelf } from './StickerShelf';
 
@@ -12,7 +12,7 @@ type ThemeScreenProps = {
 
 export function ThemeScreen({ theme, progress, onBack, onStart, onExplore }: ThemeScreenProps) {
   const completedCount = getCompletedCount(progress, theme.id);
-  const nextLevel = Math.min(completedCount + 1, 3) as LevelNumber;
+  const nextLevel = LEVEL_NUMBERS[Math.min(completedCount, LEVEL_NUMBERS.length - 1)];
 
   return (
     <section className="screen theme-screen" aria-labelledby="theme-title">
@@ -24,7 +24,9 @@ export function ThemeScreen({ theme, progress, onBack, onStart, onExplore }: The
           {theme.emoji}
         </span>
         <h1 id="theme-title">{theme.title}</h1>
-        <p className="intro">{completedCount}/3 levels done</p>
+        <p className="intro">
+          {completedCount}/{LEVEL_NUMBERS.length} levels done
+        </p>
         <StickerShelf progress={progress} themeId={theme.id} />
       </div>
       <div className="action-row">
@@ -36,15 +38,14 @@ export function ThemeScreen({ theme, progress, onBack, onStart, onExplore }: The
         </button>
       </div>
       <div className="level-row" aria-label="Levels">
-        {[1, 2, 3].map((level) => {
-          const number = level as LevelNumber;
-          const complete = progress.completedLevels[theme.id].includes(number);
+        {LEVEL_NUMBERS.map((level) => {
+          const complete = progress.completedLevels[theme.id].includes(level);
           return (
             <button
               className={`level-island${complete ? ' is-complete' : ''}`}
               key={level}
               type="button"
-              onClick={() => onStart(number)}
+              onClick={() => onStart(level)}
             >
               <span>Level {level}</span>
               <strong>{complete ? 'Star' : 'Play'}</strong>
