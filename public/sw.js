@@ -1,4 +1,4 @@
-const CACHE_NAME = 'little-english-quest-v3';
+const CACHE_NAME = 'little-english-quest-v4';
 const appUrl = (path) => new URL(path, self.registration.scope).toString();
 const APP_SHELL = [
   './',
@@ -10,7 +10,14 @@ const APP_SHELL = [
 ].map(appUrl);
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(async (cache) => {
+      await cache.addAll(APP_SHELL);
+      const response = await fetch(appUrl('./illustrations/manifest.json'));
+      const illustrationPaths = await response.json();
+      await cache.addAll(illustrationPaths.map(appUrl));
+    })
+  );
   self.skipWaiting();
 });
 

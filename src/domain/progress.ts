@@ -26,7 +26,7 @@ function sanitizeLevels(value: unknown): LevelNumber[] {
     return [];
   }
 
-  return value.filter(isLevelNumber);
+  return Array.from(new Set(value.filter(isLevelNumber))).sort((a, b) => a - b);
 }
 
 function sanitizeStickers(value: unknown): string[] {
@@ -34,7 +34,9 @@ function sanitizeStickers(value: unknown): string[] {
     return [];
   }
 
-  return value.filter((sticker): sticker is string => typeof sticker === 'string');
+  return Array.from(
+    new Set(value.filter((sticker): sticker is string => typeof sticker === 'string'))
+  ).sort();
 }
 
 export function createInitialProgress(): ProgressState {
@@ -116,5 +118,5 @@ export function completeLevel(
 }
 
 export function getCompletedCount(progress: ProgressState, themeId: ThemeId): number {
-  return progress.completedLevels[themeId].length;
+  return new Set(progress.completedLevels[themeId]).size;
 }

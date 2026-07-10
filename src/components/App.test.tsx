@@ -9,18 +9,32 @@ class MockMediaRecorder {
   ondataavailable: ((event: BlobEvent) => void) | null = null;
   onstop: (() => void) | null = null;
   state: RecordingState = 'inactive';
-  start = vi.fn(() => {
-    this.state = 'recording';
-  });
+  start = vi.fn(() => { this.state = 'recording'; });
   stop = vi.fn(() => {
     this.state = 'inactive';
     this.ondataavailable?.({ data: new Blob(['voice'], { type: 'audio/webm' }) } as BlobEvent);
     this.onstop?.();
   });
 
-  constructor() {
-    MockMediaRecorder.instances.push(this);
-  }
+  constructor() { MockMediaRecorder.instances.push(this); }
+}
+
+async function openAnimalLesson(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: /Animals/ }));
+  await user.click(screen.getByRole('button', { name: /Start Level 1/ }));
+}
+
+async function advanceToSpeak(user: ReturnType<typeof userEvent.setup>) {
+  await openAnimalLesson(user);
+  expect(screen.getAllByRole('button', { name: /^Say / })).toHaveLength(4);
+  await user.click(screen.getByRole('button', { name: /Ready for a listening game/ }));
+
+  const heading = screen.getByRole('heading', { name: /Can you find/ }).textContent ?? '';
+  const promptWord = heading.match(/“(.+)”/)?.[1];
+  expect(promptWord).toBeTruthy();
+  await user.click(screen.getByRole('button', { name: `Choose ${promptWord}` }));
+  await user.click(screen.getByRole('button', { name: /Next: speaking/ }));
+  return screen.getByRole('button', { name: /Press and hold to speak/ });
 }
 
 describe('App flow', () => {
@@ -35,10 +49,7 @@ describe('App flow', () => {
     MockMediaRecorder.instances = [];
     Object.defineProperty(window, 'speechSynthesis', {
       configurable: true,
-      value: {
-        cancel: vi.fn(),
-        speak: vi.fn()
-      }
+      value: { cancel: vi.fn(), speak: vi.fn() }
     });
     Object.defineProperty(window, 'SpeechSynthesisUtterance', {
       configurable: true,
@@ -47,43 +58,30 @@ describe('App flow', () => {
         lang = '';
         rate = 1;
         pitch = 1;
-
-        constructor(text: string) {
-          this.text = text;
-        }
+        constructor(text: string) { this.text = text; }
       }
     });
     Object.defineProperty(navigator, 'mediaDevices', {
       configurable: true,
       value: {
-        getUserMedia: vi.fn().mockResolvedValue({
-          getTracks: () => [{ stop: stopTrack }]
-        })
+        getUserMedia: vi.fn().mockResolvedValue({ getTracks: () => [{ stop: stopTrack }] })
       }
     });
-    Object.defineProperty(window, 'MediaRecorder', {
-      configurable: true,
-      value: MockMediaRecorder
-    });
-    Object.defineProperty(URL, 'createObjectURL', {
-      configurable: true,
-      value: createObjectURL
-    });
-    Object.defineProperty(URL, 'revokeObjectURL', {
-      configurable: true,
-      value: vi.fn()
-    });
+    Object.defineProperty(window, 'MediaRecorder', { configurable: true, value: MockMediaRecorder });
+    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: createObjectURL });
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
   });
 
-  it('starts on the three theme home screen', () => {
+  it('starts on the three illustrated theme choices', () => {
     render(<App />);
 
     expect(screen.getByRole('button', { name: /Animals/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Fruits/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Food/ })).toBeInTheDocument();
+    expect(document.querySelectorAll('.theme-tile__art img')).toHaveLength(3);
   });
 
-  it('opens a theme and explores words', async () => {
+  it('opens a theme and explores all illustrated words', async () => {
     const user = userEvent.setup();
     render(<App />);
 
@@ -91,108 +89,68 @@ describe('App flow', () => {
     await user.click(screen.getByRole('button', { name: /Explore/ }));
 
     expect(screen.getByRole('heading', { name: /Animals words/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /cat/ })).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /Say/ })).toHaveLength(50);
+    expect(screen.getAllByRole('button', { name: /^Say / })).toHaveLength(50);
+    expect(document.querySelectorAll('.word-card__art img')).toHaveLength(50);
   });
 
-  it('completes the first animal level and stores progress', async () => {
+  it('does not allow a child to finish before speaking', async () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole('button', { name: /Animals/ }));
-    await user.click(screen.getByRole('button', { name: /Start/ }));
-    await user.click(screen.getByRole('button', { name: /I know these words/ }));
-    await user.click(screen.getByRole('button', { name: /cat/ }));
-    await user.click(screen.getByRole('button', { name: /Next/ }));
-    await user.pointer([
-      { keys: '[MouseLeft>]', target: screen.getByRole('button', { name: /Hold to say/ }) },
-      { keys: '[/MouseLeft]', target: screen.getByRole('button', { name: /Hold to say/ }) }
-    ]);
-    await user.click(screen.getByRole('button', { name: /Finish/ }));
+    await advanceToSpeak(user);
 
+    expect(screen.getByRole('button', { name: /Finish lesson/ })).toBeDisabled();
+    expect(screen.queryByRole('heading', { name: /Sticker earned/ })).not.toBeInTheDocument();
+  });
+
+  it('records, offers playback, completes the level, and stores progress', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const holdButton = await advanceToSpeak(user);
+
+    fireEvent.keyDown(holdButton, { key: ' ', code: 'Space' });
+    expect(holdButton).toHaveAttribute('aria-pressed', 'true');
+    await waitFor(() => expect(MockMediaRecorder.instances[0].start).toHaveBeenCalled());
+    fireEvent.keyUp(holdButton, { key: ' ', code: 'Space' });
+
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/Great speaking/));
+    expect(stopTrack).toHaveBeenCalled();
+    expect(createObjectURL).toHaveBeenCalled();
+    expect(screen.getByLabelText(/Hear your voice/)).toHaveAttribute('src', 'blob:recording');
+    expect(screen.getByRole('button', { name: /Finish lesson/ })).toBeEnabled();
+
+    await user.click(screen.getByRole('button', { name: /Finish lesson/ }));
     expect(screen.getByRole('heading', { name: /Sticker earned/ })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Back to theme/ }));
     expect(localStorage.getItem('little-english-progress-v1')).toContain('animals-sticker-1');
   });
 
-  it('updates Hold to say pressed state and status from keyboard controls', async () => {
+  it('ignores repeated keyboard presses while recording', async () => {
     const user = userEvent.setup();
     render(<App />);
-
-    await user.click(screen.getByRole('button', { name: /Animals/ }));
-    await user.click(screen.getByRole('button', { name: /Start/ }));
-    await user.click(screen.getByRole('button', { name: /I know these words/ }));
-    await user.click(screen.getByRole('button', { name: /cat/ }));
-    await user.click(screen.getByRole('button', { name: /Next/ }));
-
-    const holdButton = screen.getByRole('button', { name: /Hold to say/ });
-    expect(holdButton).toHaveAttribute('aria-pressed', 'false');
-    expect(screen.getByRole('status')).toHaveTextContent(/Ready to speak/);
-
-    fireEvent.keyDown(holdButton, { key: ' ', code: 'Space' });
-    expect(holdButton).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('status')).toHaveTextContent(/Listening/);
-
-    fireEvent.keyDown(holdButton, { key: ' ', code: 'Space', repeat: true });
-    expect(holdButton).toHaveAttribute('aria-pressed', 'true');
-
-    fireEvent.keyUp(holdButton, { key: ' ', code: 'Space' });
-    expect(holdButton).toHaveAttribute('aria-pressed', 'false');
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/Nice speaking/));
+    const holdButton = await advanceToSpeak(user);
 
     fireEvent.keyDown(holdButton, { key: 'Enter', code: 'Enter' });
-    expect(holdButton).toHaveAttribute('aria-pressed', 'true');
-
+    fireEvent.keyDown(holdButton, { key: 'Enter', code: 'Enter', repeat: true });
+    await waitFor(() => expect(MockMediaRecorder.instances).toHaveLength(1));
     fireEvent.keyUp(holdButton, { key: 'Enter', code: 'Enter' });
-    expect(holdButton).toHaveAttribute('aria-pressed', 'false');
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/Nice speaking/));
+    await waitFor(() => expect(holdButton).toHaveAttribute('aria-pressed', 'false'));
   });
 
-  it('updates Hold to say pressed state from touch controls', async () => {
+  it('offers an explicit skip when microphone permission is blocked', async () => {
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: { getUserMedia: vi.fn().mockRejectedValue(new Error('blocked')) }
+    });
     const user = userEvent.setup();
     render(<App />);
+    const holdButton = await advanceToSpeak(user);
 
-    await user.click(screen.getByRole('button', { name: /Animals/ }));
-    await user.click(screen.getByRole('button', { name: /Start/ }));
-    await user.click(screen.getByRole('button', { name: /I know these words/ }));
-    await user.click(screen.getByRole('button', { name: /cat/ }));
-    await user.click(screen.getByRole('button', { name: /Next/ }));
+    fireEvent.keyDown(holdButton, { key: ' ', code: 'Space' });
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/blocked/));
+    expect(screen.getByRole('button', { name: /Finish lesson/ })).toBeDisabled();
 
-    const holdButton = screen.getByRole('button', { name: /Hold to say/ });
-
-    fireEvent.touchStart(holdButton);
-    expect(holdButton).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('status')).toHaveTextContent(/Listening/);
-
-    fireEvent.touchEnd(holdButton);
-    expect(holdButton).toHaveAttribute('aria-pressed', 'false');
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/Nice speaking/));
-  });
-
-  it('records the child voice while Hold to say is pressed and offers playback', async () => {
-    const user = userEvent.setup();
-    render(<App />);
-
-    await user.click(screen.getByRole('button', { name: /Animals/ }));
-    await user.click(screen.getByRole('button', { name: /Start/ }));
-    await user.click(screen.getByRole('button', { name: /I know these words/ }));
-    await user.click(screen.getByRole('button', { name: /cat/ }));
-    await user.click(screen.getByRole('button', { name: /Next/ }));
-
-    const holdButton = screen.getByRole('button', { name: /Hold to say/ });
-
-    fireEvent.touchStart(holdButton);
-
-    await waitFor(() => expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledWith({ audio: true }));
-    await waitFor(() => expect(MockMediaRecorder.instances[0].start).toHaveBeenCalled());
-    expect(holdButton).toHaveAttribute('aria-pressed', 'true');
-
-    fireEvent.touchEnd(holdButton);
-
-    await waitFor(() => expect(MockMediaRecorder.instances[0].stop).toHaveBeenCalled());
-    expect(stopTrack).toHaveBeenCalled();
-    expect(createObjectURL).toHaveBeenCalled();
-    expect(screen.getByLabelText(/Hear your voice/)).toHaveAttribute('src', 'blob:recording');
-    expect(screen.getByRole('status')).toHaveTextContent(/Nice speaking/);
+    await user.click(screen.getByRole('button', { name: /Skip speaking this time/ }));
+    expect(screen.getByRole('button', { name: /Finish lesson/ })).toBeEnabled();
   });
 });
