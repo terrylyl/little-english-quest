@@ -32,12 +32,20 @@ describe('content data', () => {
     }
   });
 
+  it('gives every word a local illustration instead of a system emoji', () => {
+    for (const theme of themes) {
+      for (const word of theme.words) {
+        expect(word.image).toBe(`./illustrations/${theme.id}/${word.word.replace(/\s+/g, '-')}.svg`);
+      }
+    }
+  });
+
   it('returns theme summaries for the home screen', () => {
     expect(getThemeSummaries()).toEqual([
       {
         id: 'animals',
         title: 'Animals',
-        emoji: '🐾',
+        image: './illustrations/themes/animals.svg',
         color: '#1f7a8c',
         wordCount: 50,
         levelCount: 5
@@ -45,7 +53,7 @@ describe('content data', () => {
       {
         id: 'fruits',
         title: 'Fruits',
-        emoji: '🍓',
+        image: './illustrations/themes/fruits.svg',
         color: '#d95d39',
         wordCount: 50,
         levelCount: 5
@@ -53,7 +61,7 @@ describe('content data', () => {
       {
         id: 'food',
         title: 'Food',
-        emoji: '🍞',
+        image: './illustrations/themes/food.svg',
         color: '#6a994e',
         wordCount: 50,
         levelCount: 5

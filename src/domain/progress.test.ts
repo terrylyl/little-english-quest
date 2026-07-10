@@ -63,11 +63,11 @@ describe('progress persistence', () => {
       JSON.stringify({
         completedLevels: {
           animals: 'not-an-array',
-          fruits: [1, 6, 4, 2],
+          fruits: [1, 6, 4, 2, 4],
           food: [5, '2']
         },
         stickers: {
-          animals: ['animals-sticker-1', 7],
+          animals: ['animals-sticker-1', 7, 'animals-sticker-1'],
           fruits: 'not-an-array',
           food: [false, 'food-sticker-5']
         },
@@ -78,7 +78,7 @@ describe('progress persistence', () => {
     expect(loadProgress()).toEqual({
       completedLevels: {
         animals: [],
-        fruits: [1, 4, 2],
+        fruits: [1, 2, 4],
         food: [5]
       },
       stickers: {

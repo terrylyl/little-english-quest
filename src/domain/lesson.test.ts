@@ -2,32 +2,35 @@ import { describe, expect, it } from 'vitest';
 import { getLevelWords } from './content';
 import {
   advanceLesson,
+  allowSpeakingSkip,
   answerListenPrompt,
+  completeSpeaking,
   createLessonState,
+  skipSpeaking,
   startSpeaking,
   stopSpeaking
 } from './lesson';
 
 describe('lesson state machine', () => {
   const words = getLevelWords('animals', 1);
+  const fixedRandom = () => 0;
 
-  it('starts on the learn step with ten words', () => {
-    const state = createLessonState('animals', 1, words);
+  it('samples four unique words from the selected level', () => {
+    const state = createLessonState('animals', 1, words, fixedRandom);
 
     expect(state.step).toBe('learn');
-    expect(state.words.map((word) => word.word)).toEqual([
-      'cat',
-      'dog',
-      'bird',
-      'fish',
-      'rabbit',
-      'duck',
-      'cow',
-      'pig',
-      'horse',
-      'sheep'
-    ]);
-    expect(state.promptWord.word).toBe('cat');
+    expect(state.words).toHaveLength(4);
+    expect(new Set(state.words.map((word) => word.id)).size).toBe(4);
+    expect(state.words.every((word) => word.level === 1)).toBe(true);
+    expect(state.listenOptions.map((word) => word.id).sort()).toEqual(
+      state.words.map((word) => word.id).sort()
+    );
+  });
+
+  it('uses the available words when a lesson contains fewer than four', () => {
+    const state = createLessonState('animals', 1, words.slice(0, 2), fixedRandom);
+
+    expect(state.words).toHaveLength(2);
   });
 
   it('rejects lessons without words', () => {
@@ -36,71 +39,63 @@ describe('lesson state machine', () => {
     );
   });
 
-  it('moves through learn, listen, speak, and reward steps', () => {
-    const listenState = advanceLesson(createLessonState('animals', 1, words));
-    expect(listenState.step).toBe('listen');
+  it('requires a correct listen answer and a completed recording', () => {
+    const learn = createLessonState('animals', 1, words, fixedRandom);
+    const listen = advanceLesson(learn);
+    expect(listen.step).toBe('listen');
+    expect(advanceLesson(listen)).toBe(listen);
 
-    const answered = answerListenPrompt(listenState, listenState.promptWord.id);
-    expect(answered.feedback).toBe('correct');
+    const answered = answerListenPrompt(listen, listen.promptWord.id);
+    const speak = advanceLesson(answered);
+    expect(speak.step).toBe('speak');
+    expect(advanceLesson(speak)).toBe(speak);
 
-    const speaking = startSpeaking(advanceLesson(answered));
-    expect(speaking.step).toBe('speak');
-    expect(speaking.isRecording).toBe(true);
+    const recording = startSpeaking(speak);
+    const stopped = stopSpeaking(recording);
+    expect(advanceLesson(stopped)).toBe(stopped);
 
-    const stopped = stopSpeaking(speaking);
-    expect(stopped.isRecording).toBe(false);
-    expect(advanceLesson(stopped).step).toBe('reward');
+    const completed = completeSpeaking(stopped);
+    expect(completed.speakingOutcome).toBe('recorded');
+    expect(advanceLesson(completed).step).toBe('reward');
+  });
+
+  it('allows an explicit skip only after recording becomes unavailable', () => {
+    const learn = createLessonState('animals', 1, words, fixedRandom);
+    const listen = advanceLesson(learn);
+    const answered = answerListenPrompt(listen, listen.promptWord.id);
+    const speak = advanceLesson(answered);
+
+    expect(skipSpeaking(speak)).toBe(speak);
+
+    const unavailable = allowSpeakingSkip(speak);
+    expect(unavailable.canSkipSpeaking).toBe(true);
+    expect(skipSpeaking(unavailable).speakingOutcome).toBe('skipped');
+    expect(advanceLesson(skipSpeaking(unavailable)).step).toBe('reward');
   });
 
   it('gives gentle feedback for wrong listen answers', () => {
-    const listenState = advanceLesson(createLessonState('animals', 1, words));
-    const answered = answerListenPrompt(listenState, 'animals-dog');
+    const listen = advanceLesson(createLessonState('animals', 1, words, fixedRandom));
+    const wrong = listen.listenOptions.find((word) => word.id !== listen.promptWord.id)!;
+    const answered = answerListenPrompt(listen, wrong.id);
 
     expect(answered.feedback).toBe('try-again');
     expect(answered.step).toBe('listen');
   });
 
-  it('does not leave listen unless feedback is correct', () => {
-    const listenState = advanceLesson(createLessonState('animals', 1, words));
-    expect(advanceLesson(listenState)).toBe(listenState);
+  it('ignores step-specific actions outside their step', () => {
+    const learn = createLessonState('animals', 1, words, fixedRandom);
+    const listen = advanceLesson(learn);
+    const answered = answerListenPrompt(listen, listen.promptWord.id);
+    const speak = advanceLesson(answered);
+    const reward = advanceLesson(completeSpeaking(speak));
 
-    const retryState = answerListenPrompt(listenState, 'animals-dog');
-    expect(advanceLesson(retryState)).toBe(retryState);
-  });
-
-  it('does not advance from reward', () => {
-    const listenState = advanceLesson(createLessonState('animals', 1, words));
-    const answered = answerListenPrompt(listenState, listenState.promptWord.id);
-    const rewardState = advanceLesson(stopSpeaking(startSpeaking(advanceLesson(answered))));
-
-    expect(rewardState.step).toBe('reward');
-    expect(advanceLesson(rewardState)).toBe(rewardState);
-  });
-
-  it('does not answer listen prompts outside listen', () => {
-    const learnState = createLessonState('animals', 1, words);
-    const listenState = advanceLesson(learnState);
-    const answered = answerListenPrompt(listenState, listenState.promptWord.id);
-    const speakState = advanceLesson(answered);
-    const rewardState = advanceLesson(speakState);
-
-    expect(answerListenPrompt(learnState, learnState.promptWord.id)).toBe(learnState);
-    expect(answerListenPrompt(speakState, speakState.promptWord.id)).toBe(speakState);
-    expect(answerListenPrompt(rewardState, rewardState.promptWord.id)).toBe(rewardState);
-  });
-
-  it('does not change recording outside speak', () => {
-    const learnState = createLessonState('animals', 1, words);
-    const listenState = advanceLesson(learnState);
-    const answered = answerListenPrompt(listenState, listenState.promptWord.id);
-    const speakState = advanceLesson(answered);
-    const rewardState = advanceLesson(speakState);
-
-    expect(startSpeaking(learnState)).toBe(learnState);
-    expect(startSpeaking(listenState)).toBe(listenState);
-    expect(startSpeaking(rewardState)).toBe(rewardState);
-    expect(stopSpeaking(learnState)).toBe(learnState);
-    expect(stopSpeaking(listenState)).toBe(listenState);
-    expect(stopSpeaking(rewardState)).toBe(rewardState);
+    expect(answerListenPrompt(learn, learn.promptWord.id)).toBe(learn);
+    expect(answerListenPrompt(speak, speak.promptWord.id)).toBe(speak);
+    expect(startSpeaking(learn)).toBe(learn);
+    expect(stopSpeaking(listen)).toBe(listen);
+    expect(completeSpeaking(reward)).toBe(reward);
+    expect(allowSpeakingSkip(reward)).toBe(reward);
+    expect(skipSpeaking(reward)).toBe(reward);
+    expect(advanceLesson(reward)).toBe(reward);
   });
 });

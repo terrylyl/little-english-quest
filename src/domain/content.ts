@@ -10,13 +10,13 @@ export type WordEntry = {
   sentence: string;
   theme: ThemeId;
   level: LevelNumber;
-  emoji: string;
+  image: string;
 };
 
 export type Theme = {
   id: ThemeId;
   title: string;
-  emoji: string;
+  image: string;
   color: string;
   words: WordEntry[];
 };
@@ -24,13 +24,13 @@ export type Theme = {
 export type ThemeSummary = {
   id: ThemeId;
   title: string;
-  emoji: string;
+  image: string;
   color: string;
   wordCount: number;
   levelCount: number;
 };
 
-type WordSeed = [word: string, zh: string, level: LevelNumber, emoji: string];
+type WordSeed = [word: string, zh: string, level: LevelNumber, sourceIcon: string];
 
 const words = {
   animals: [
@@ -236,15 +236,19 @@ function makeSentence(theme: ThemeId, word: string): string {
   return `This is ${articleFor(word)} ${word}.`;
 }
 
+function slugify(word: string): string {
+  return word.replace(/\s+/g, '-');
+}
+
 function makeWords(theme: ThemeId): WordEntry[] {
-  return words[theme].map(([word, zh, level, emoji]) => ({
-    id: `${theme}-${word.replace(/\s+/g, '-')}`,
+  return words[theme].map(([word, zh, level]) => ({
+    id: `${theme}-${slugify(word)}`,
     word,
     zh,
     sentence: makeSentence(theme, word),
     theme,
     level,
-    emoji
+    image: `./illustrations/${theme}/${slugify(word)}.svg`
   }));
 }
 
@@ -252,21 +256,21 @@ export const themes: Theme[] = [
   {
     id: 'animals',
     title: 'Animals',
-    emoji: '🐾',
+    image: './illustrations/themes/animals.svg',
     color: '#1f7a8c',
     words: makeWords('animals')
   },
   {
     id: 'fruits',
     title: 'Fruits',
-    emoji: '🍓',
+    image: './illustrations/themes/fruits.svg',
     color: '#d95d39',
     words: makeWords('fruits')
   },
   {
     id: 'food',
     title: 'Food',
-    emoji: '🍞',
+    image: './illustrations/themes/food.svg',
     color: '#6a994e',
     words: makeWords('food')
   }
@@ -276,7 +280,7 @@ export function getThemeSummaries(): ThemeSummary[] {
   return themes.map((theme) => ({
     id: theme.id,
     title: theme.title,
-    emoji: theme.emoji,
+    image: theme.image,
     color: theme.color,
     wordCount: theme.words.length,
     levelCount: LEVEL_NUMBERS.length

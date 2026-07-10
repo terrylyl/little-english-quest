@@ -22,8 +22,8 @@ export function Home({ themes, onSelectTheme }: HomeProps) {
             style={{ '--theme-color': theme.color } as CSSProperties}
             onClick={() => onSelectTheme(theme.id)}
           >
-            <span className="theme-tile__emoji" aria-hidden="true">
-              {theme.emoji}
+            <span className="theme-tile__art" aria-hidden="true">
+              <img src={theme.image} alt="" />
             </span>
             <span className="theme-tile__title">{theme.title}</span>
             <span className="theme-tile__meta">{theme.wordCount} words</span>

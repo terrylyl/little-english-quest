@@ -72,6 +72,7 @@ export default function App() {
   return (
     <main className="app-shell">
       <LessonScreen
+        key={`${theme.id}-${route.level}`}
         theme={theme}
         level={route.level}
         player={player}
