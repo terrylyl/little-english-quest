@@ -4,7 +4,7 @@ A touch-first English learning app for children ages 3 to 6.
 
 ## What It Includes
 
-- Theme quests for animals, fruits, and food
+- Theme quests for animals, fruits, food, toys, colors, and vehicles
 - Learn, listen, speak, and reward steps for each word
 - Explore mode with tappable vocabulary cards
 - Local progress and sticker rewards

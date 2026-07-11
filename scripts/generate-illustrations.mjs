@@ -17,12 +17,12 @@ const entries = [...source.matchAll(/^\s*\['([^']+)',\s*'([^']+)',\s*(\d),\s*'([
     zh,
     level: Number(level),
     sourceIcon,
-    theme: index < 50 ? 'animals' : index < 100 ? 'fruits' : 'food'
+    theme: index < 50 ? 'animals' : index < 100 ? 'fruits' : index < 150 ? 'food' : index < 180 ? 'toys' : index < 200 ? 'colors' : 'vehicles'
   })
 );
 
-if (entries.length !== 150) {
-  throw new Error(`Expected 150 content entries, found ${entries.length}.`);
+if (entries.length !== 230) {
+  throw new Error(`Expected 230 content entries, found ${entries.length}.`);
 }
 
 const stroke = 'stroke="#172f45" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"';
@@ -87,6 +87,14 @@ const custom = {
   jam: () => `<g ${stroke}><path fill="#f4f0df" d="M9 10h18v21H9z"/><path fill="#b92e50" d="M10 17h16v13H10z"/><path fill="#72a64c" d="M17 19c0-4 4-6 7-5-1 4-4 6-7 5Z"/><circle fill="#dd4c68" cx="17" cy="23" r="4"/><path fill="#d7aa55" d="M8 6h20v6H8z"/></g>`
 };
 
+const colorSwatches = {
+  'color-red': '#e3423d', 'color-blue': '#3979d4', 'color-yellow': '#f4cf3f', 'color-green': '#54a94f',
+  'color-orange': '#ef8b32', 'color-purple': '#8157b7', 'color-pink': '#ef83ad', 'color-brown': '#8b6045',
+  'color-black': '#202630', 'color-white': '#fffdf4', 'color-gray': '#929aa2', 'color-gold': '#d9ad32',
+  'color-silver': '#c6cbd0', 'color-navy': '#243d72', 'color-teal': '#238f8b', 'color-lime': '#9bcf43',
+  'color-beige': '#dfc9a5', 'color-coral': '#ef7267', 'color-turquoise': '#35bcb7', 'color-violet': '#9a55c7'
+};
+
 const preferredIcons = {
   sheep: 'ewe', hen: 'chicken', bee: 'honeybee', squirrel: 'chipmunk', orange: 'tangerine',
   grape: 'grapes', pomegranate: 'pomegranate', lime: 'lime', noodles: 'steaming-bowl',
@@ -102,12 +110,16 @@ function codePointKey(value) {
 }
 
 function iconBody(entry) {
+  if (colorSwatches[entry.sourceIcon]) {
+    const color = colorSwatches[entry.sourceIcon];
+    return `<g ${stroke}><circle fill="${color}" cx="36" cy="36" r="25"/><path fill="rgba(255,255,255,.28)" stroke="none" d="M20 29c5-10 18-15 29-8-13-2-22 3-29 8Z"/></g>`;
+  }
   if (custom[entry.word]) {
     return `<g transform="scale(2)">${custom[entry.word]()}</g>`;
   }
 
   const directName = preferredIcons[entry.word] ?? entry.word.replaceAll(' ', '-');
-  const directIcon = iconSet.icons[directName];
+  const directIcon = iconSet.icons[directName] ?? iconSet.icons[entry.sourceIcon];
   if (directIcon) {
     return directIcon.body;
   }
@@ -132,7 +144,7 @@ for (const entry of entries) {
   );
 }
 
-for (const [theme, iconName] of Object.entries({ animals: 'paw-prints', fruits: 'strawberry', food: 'bread' })) {
+for (const [theme, iconName] of Object.entries({ animals: 'paw-prints', fruits: 'strawberry', food: 'bread', toys: 'bear', colors: 'artist-palette', vehicles: 'automobile' })) {
   const icon = iconSet.icons[iconName];
   if (!icon) throw new Error(`Missing theme icon ${iconName}.`);
   const directory = path.join(outputRoot, 'themes');
@@ -144,11 +156,14 @@ const illustrationPaths = [
   ...entries.map((entry) => `./illustrations/${entry.theme}/${entry.word.replaceAll(' ', '-')}.svg`),
   './illustrations/themes/animals.svg',
   './illustrations/themes/fruits.svg',
-  './illustrations/themes/food.svg'
+  './illustrations/themes/food.svg',
+  './illustrations/themes/toys.svg',
+  './illustrations/themes/colors.svg',
+  './illustrations/themes/vehicles.svg'
 ];
 fs.writeFileSync(
   path.join(outputRoot, 'manifest.json'),
   `${JSON.stringify(illustrationPaths, null, 2)}\n`
 );
 
-console.log(`Generated ${entries.length + 3} local SVG illustrations.`);
+console.log(`Generated ${entries.length + 6} local SVG illustrations.`);

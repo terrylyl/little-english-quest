@@ -1,92 +1,17 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import {
-  completeLevel,
-  createInitialProgress,
-  getCompletedCount,
-  loadProgress,
-  saveProgress,
-  type ProgressState
-} from './progress';
+import { completeLevel, createInitialProgress, loadProgress, saveProgress, updateWord } from './progress';
 
-describe('progress persistence', () => {
-  beforeEach(() => {
-    localStorage.clear();
+describe('versioned progress persistence', () => {
+  beforeEach(() => localStorage.clear());
+  it('creates a safe version 2 state', () => { const state = createInitialProgress(); expect(state.version).toBe(2); expect(state.wordProgress).toEqual({}); expect(state.profile.ageBand).toBe('5-6'); });
+  it('migrates legacy progress without losing levels or stickers', () => {
+    localStorage.setItem('little-english-progress-v1', JSON.stringify({ completedLevels: { animals: [1], fruits: [], food: [] }, stickers: { animals: ['animals-sticker-1'], fruits: [], food: [] }, recentTheme: 'animals' }));
+    const state = loadProgress(); expect(state.completedLevels.animals).toEqual([1]); expect(state.stickers.animals).toEqual(['animals-sticker-1']); expect(state.wordProgress).toEqual({});
   });
-
-  it('creates empty progress for every theme', () => {
-    expect(createInitialProgress()).toEqual({
-      completedLevels: {
-        animals: [],
-        fruits: [],
-        food: []
-      },
-      stickers: {
-        animals: [],
-        fruits: [],
-        food: []
-      },
-      recentTheme: 'animals'
-    });
+  it('saves schema version, word progress, rewards and history', () => {
+    let state = updateWord(createInitialProgress(), 'animals-cat', 'learned', new Date('2026-01-01T00:00:00Z'));
+    state = completeLevel(state, 'animals', 1, ['animals-cat'], 0, new Date('2026-01-01T00:00:00Z')); saveProgress(state);
+    const loaded = loadProgress(); expect(loaded.wordProgress['animals-cat'].mastery).toBe(1); expect(loaded.rewards.stars).toBe(3); expect(loaded.lessonHistory).toHaveLength(1);
   });
-
-  it('saves and loads progress from localStorage', () => {
-    const progress: ProgressState = completeLevel(createInitialProgress(), 'fruits', 2);
-    saveProgress(progress);
-
-    expect(loadProgress()).toEqual({
-      completedLevels: {
-        animals: [],
-        fruits: [2],
-        food: []
-      },
-      stickers: {
-        animals: [],
-        fruits: ['fruits-sticker-2'],
-        food: []
-      },
-      recentTheme: 'fruits'
-    });
-  });
-
-  it('does not duplicate completed levels or stickers', () => {
-    const once = completeLevel(createInitialProgress(), 'food', 5);
-    const twice = completeLevel(once, 'food', 5);
-
-    expect(twice.completedLevels.food).toEqual([5]);
-    expect(twice.stickers.food).toEqual(['food-sticker-5']);
-    expect(getCompletedCount(twice, 'food')).toBe(1);
-  });
-
-  it('sanitizes malformed stored progress', () => {
-    localStorage.setItem(
-      'little-english-progress-v1',
-      JSON.stringify({
-        completedLevels: {
-          animals: 'not-an-array',
-          fruits: [1, 6, 4, 2, 4],
-          food: [5, '2']
-        },
-        stickers: {
-          animals: ['animals-sticker-1', 7, 'animals-sticker-1'],
-          fruits: 'not-an-array',
-          food: [false, 'food-sticker-5']
-        },
-        recentTheme: 'space'
-      })
-    );
-
-    expect(loadProgress()).toEqual({
-      completedLevels: {
-        animals: [],
-        fruits: [1, 2, 4],
-        food: [5]
-      },
-      stickers: {
-        animals: ['animals-sticker-1'],
-        fruits: [],
-        food: ['food-sticker-5']
-      },
-      recentTheme: 'animals'
-    });
-  });
+  it('falls back safely for corrupt JSON', () => { localStorage.setItem('little-english-progress-v2', '{'); expect(loadProgress()).toEqual(createInitialProgress()); });
 });

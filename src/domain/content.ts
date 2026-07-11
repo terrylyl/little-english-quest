@@ -1,4 +1,4 @@
-export type ThemeId = 'animals' | 'fruits' | 'food';
+export type ThemeId = 'animals' | 'fruits' | 'food' | 'toys' | 'colors' | 'vehicles';
 export type LevelNumber = 1 | 2 | 3 | 4 | 5;
 
 export const LEVEL_NUMBERS = [1, 2, 3, 4, 5] as const satisfies readonly LevelNumber[];
@@ -188,6 +188,92 @@ const words = {
     ['pie', '派', 5, '🥧'],
     ['jam', '果酱', 5, '🍓'],
     ['honey', '蜂蜜', 5, '🍯']
+  ],
+  toys: [
+    ['teddy bear', '泰迪熊', 1, 'bear'],
+    ['balloon', '气球', 1, 'balloon'],
+    ['kite', '风筝', 1, 'kite'],
+    ['yo-yo', '悠悠球', 1, 'yo-yo'],
+    ['puzzle', '拼图', 1, 'puzzle-piece'],
+    ['dice', '骰子', 1, 'game-die'],
+    ['video game', '电子游戏', 2, 'video-game'],
+    ['toy car', '玩具汽车', 2, 'autonomous-car'],
+    ['train', '火车', 2, 'train'],
+    ['bicycle', '自行车', 2, 'bicycle'],
+    ['scooter', '滑板车', 2, 'kick-scooter'],
+    ['skateboard', '滑板', 2, 'skateboard'],
+    ['roller skates', '轮滑鞋', 3, 'roller-skate'],
+    ['paint set', '绘画套装', 3, 'artist-palette'],
+    ['crayon', '蜡笔', 3, 'crayon'],
+    ['drum', '鼓', 3, 'drum'],
+    ['guitar', '吉他', 3, 'guitar'],
+    ['keyboard', '电子琴', 3, 'musical-keyboard'],
+    ['trumpet', '小号', 4, 'trumpet'],
+    ['books', '图书', 4, 'books'],
+    ['doll', '娃娃', 4, 'nesting-dolls'],
+    ['robot', '机器人', 4, 'robot'],
+    ['rocket', '火箭', 4, 'rocket'],
+    ['sailboat', '帆船', 4, 'sailboat'],
+    ['soccer ball', '足球', 5, 'soccer-ball'],
+    ['basketball', '篮球', 5, 'basketball'],
+    ['baseball', '棒球', 5, 'baseball'],
+    ['tennis ball', '网球', 5, 'tennis'],
+    ['volleyball', '排球', 5, 'volleyball'],
+    ['flying disc', '飞盘', 5, 'flying-disc']
+  ],
+  colors: [
+    ['red', '红色', 1, 'color-red'],
+    ['blue', '蓝色', 1, 'color-blue'],
+    ['yellow', '黄色', 1, 'color-yellow'],
+    ['green', '绿色', 1, 'color-green'],
+    ['orange', '橙色', 2, 'color-orange'],
+    ['purple', '紫色', 2, 'color-purple'],
+    ['pink', '粉色', 2, 'color-pink'],
+    ['brown', '棕色', 2, 'color-brown'],
+    ['black', '黑色', 3, 'color-black'],
+    ['white', '白色', 3, 'color-white'],
+    ['gray', '灰色', 3, 'color-gray'],
+    ['gold', '金色', 3, 'color-gold'],
+    ['silver', '银色', 4, 'color-silver'],
+    ['navy', '藏青色', 4, 'color-navy'],
+    ['teal', '青绿色', 4, 'color-teal'],
+    ['lime', '青柠色', 4, 'color-lime'],
+    ['beige', '米色', 5, 'color-beige'],
+    ['coral', '珊瑚色', 5, 'color-coral'],
+    ['turquoise', '绿松石色', 5, 'color-turquoise'],
+    ['violet', '紫罗兰色', 5, 'color-violet']
+  ],
+  vehicles: [
+    ['car', '汽车', 1, 'automobile'],
+    ['taxi', '出租车', 1, 'taxi'],
+    ['bus', '公交车', 1, 'bus'],
+    ['trolleybus', '无轨电车', 1, 'trolleybus'],
+    ['race car', '赛车', 1, 'racing-car'],
+    ['police car', '警车', 1, 'police-car'],
+    ['ambulance', '救护车', 2, 'ambulance'],
+    ['fire engine', '消防车', 2, 'fire-engine'],
+    ['delivery truck', '送货卡车', 2, 'delivery-truck'],
+    ['lorry', '大卡车', 2, 'articulated-lorry'],
+    ['tractor', '拖拉机', 2, 'tractor'],
+    ['motorcycle', '摩托车', 2, 'motorcycle'],
+    ['motor scooter', '小型摩托车', 3, 'motor-scooter'],
+    ['bicycle', '自行车', 3, 'bicycle'],
+    ['scooter', '滑板车', 3, 'kick-scooter'],
+    ['train', '火车', 3, 'train'],
+    ['tram', '有轨电车', 3, 'tram'],
+    ['subway', '地铁', 3, 'metro'],
+    ['monorail', '单轨列车', 4, 'monorail'],
+    ['airplane', '飞机', 4, 'airplane'],
+    ['small plane', '小型飞机', 4, 'small-airplane'],
+    ['helicopter', '直升机', 4, 'helicopter'],
+    ['rocket', '火箭', 4, 'rocket'],
+    ['flying saucer', '飞碟', 4, 'flying-saucer'],
+    ['sailboat', '帆船', 5, 'sailboat'],
+    ['speedboat', '快艇', 5, 'speedboat'],
+    ['motor boat', '摩托艇', 5, 'motor-boat'],
+    ['canoe', '独木舟', 5, 'canoe'],
+    ['ship', '轮船', 5, 'ship'],
+    ['ferry', '渡轮', 5, 'ferry']
   ]
 } satisfies Record<ThemeId, WordSeed[]>;
 
@@ -273,6 +359,27 @@ export const themes: Theme[] = [
     image: './illustrations/themes/food.svg',
     color: '#6a994e',
     words: makeWords('food')
+  },
+  {
+    id: 'toys',
+    title: 'Toys',
+    image: './illustrations/themes/toys.svg',
+    color: '#8b5fbf',
+    words: makeWords('toys')
+  },
+  {
+    id: 'colors',
+    title: 'Colors',
+    image: './illustrations/themes/colors.svg',
+    color: '#e75b75',
+    words: makeWords('colors')
+  },
+  {
+    id: 'vehicles',
+    title: 'Vehicles',
+    image: './illustrations/themes/vehicles.svg',
+    color: '#3678b5',
+    words: makeWords('vehicles')
   }
 ];
 

@@ -9,18 +9,18 @@ import {
 } from './content';
 
 describe('content data', () => {
-  it('contains three themes and one hundred fifty words', () => {
-    expect(themes).toHaveLength(3);
-    expect(themes.map((theme) => theme.id)).toEqual(['animals', 'fruits', 'food']);
-    expect(themes.flatMap((theme) => theme.words)).toHaveLength(150);
+  it('contains six themes and two hundred thirty words', () => {
+    expect(themes).toHaveLength(6);
+    expect(themes.map((theme) => theme.id)).toEqual(['animals', 'fruits', 'food', 'toys', 'colors', 'vehicles']);
+    expect(themes.flatMap((theme) => theme.words)).toHaveLength(230);
   });
 
-  it('gives each theme fifty words split into five levels of ten words', () => {
+  it('splits every theme evenly across five levels', () => {
     for (const theme of themes) {
-      expect(theme.words).toHaveLength(50);
-
+      expect(theme.words.length).toBeGreaterThanOrEqual(20);
+      const wordsPerLevel = theme.words.length / LEVEL_NUMBERS.length;
       for (const level of LEVEL_NUMBERS) {
-        expect(getLevelWords(theme.id, level)).toHaveLength(10);
+        expect(getLevelWords(theme.id, level)).toHaveLength(wordsPerLevel);
       }
     }
   });
@@ -65,6 +65,15 @@ describe('content data', () => {
         color: '#6a994e',
         wordCount: 50,
         levelCount: 5
+      },
+      {
+        id: 'toys', title: 'Toys', image: './illustrations/themes/toys.svg', color: '#8b5fbf', wordCount: 30, levelCount: 5
+      },
+      {
+        id: 'colors', title: 'Colors', image: './illustrations/themes/colors.svg', color: '#e75b75', wordCount: 20, levelCount: 5
+      },
+      {
+        id: 'vehicles', title: 'Vehicles', image: './illustrations/themes/vehicles.svg', color: '#3678b5', wordCount: 30, levelCount: 5
       }
     ]);
   });

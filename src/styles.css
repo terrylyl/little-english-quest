@@ -149,6 +149,12 @@ h1 {
 .sticker.is-earned, .reward-badge { background: var(--yellow); color: var(--ink); }
 
 .speak-panel, .reward-screen { display: grid; gap: 18px; justify-items: center; text-align: center; }
+.activity-panel { display: grid; justify-items: center; gap: 18px; }
+.activity-hint { margin: 12px auto 0; text-align: center; color: var(--muted); font-weight: 700; }
+.use-card { width: min(620px, 100%); margin: 0 auto; padding: clamp(24px, 5vw, 48px); display: grid; justify-items: center; gap: 20px; text-align: center; background: var(--paper); border: 4px solid var(--ink); border-radius: 28px 10px 28px 10px; box-shadow: 9px 9px 0 rgba(23, 50, 77, .14); }
+.use-card img { width: min(260px, 62vw); aspect-ratio: 1; object-fit: contain; }
+.use-command { margin: 0; font-family: var(--display); font-size: clamp(1.6rem, 5vw, 2.7rem); line-height: 1.15; }
+.use-card .sound-button:disabled { opacity: .56; cursor: not-allowed; box-shadow: none; }
 .speak-art { width: 220px; height: 220px; border: 3px solid var(--ink); border-radius: 40px; background: #fff1c7; box-shadow: 0 8px 0 var(--ink); }
 .speak-art img { width: 175px; height: 175px; object-fit: contain; }
 .speak-label { margin: 0; font-family: "Arial Rounded MT Bold", "Trebuchet MS", sans-serif; font-size: clamp(2.2rem, 5vw, 4rem); font-weight: 900; }

@@ -1,271 +1,56 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-  type KeyboardEvent,
-  type PointerEvent as ReactPointerEvent
-} from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import type { SpeechPlayer } from '../domain/audio';
 import type { LevelNumber, Theme, WordEntry } from '../domain/content';
-import {
-  advanceLesson,
-  allowSpeakingSkip,
-  answerListenPrompt,
-  completeSpeaking,
-  createLessonState,
-  skipSpeaking,
-  startSpeaking,
-  stopSpeaking
-} from '../domain/lesson';
+import type { DifficultyPolicy } from '../domain/difficulty';
+import { advanceLesson, allowSpeakingSkip, answerListenPrompt, completeActivity, completeSpeaking, createLessonState, skipSpeaking, startSpeaking, stopSpeaking, type LessonState } from '../domain/lesson';
 import { WordCard } from './WordCard';
 
-type LessonScreenProps = {
-  theme: Theme;
-  level: LevelNumber;
-  player: SpeechPlayer;
-  onBack: () => void;
-  onComplete: () => void;
-};
+type Props = { theme: Theme; level: LevelNumber; words: WordEntry[]; warmUpWords: WordEntry[]; policy: DifficultyPolicy; player: SpeechPlayer; onBack: () => void; onComplete: (lesson: LessonState) => void };
+type VoiceCapture = { recorder?: MediaRecorder; stream?: MediaStream; chunks: Blob[]; stopWhenReady: boolean };
+const steps = ['warm-up', 'learn', 'play', 'listen', 'speak', 'use', 'reward'] as const;
 
-type VoiceCapture = {
-  recorder?: MediaRecorder;
-  stream?: MediaStream;
-  chunks: Blob[];
-  stopWhenReady: boolean;
-};
-
-export function LessonScreen({ theme, level, player, onBack, onComplete }: LessonScreenProps) {
-  const levelWords = theme.words.filter((word) => word.level === level);
-  const [lesson, setLesson] = useState(() => createLessonState(theme.id, level, levelWords));
+export function LessonScreen({ theme, level, words, warmUpWords, policy, player, onBack, onComplete }: Props) {
+  const [lesson, setLesson] = useState(() => createLessonState(theme.id, level, words, warmUpWords, policy.listenOptionCount));
   const [voiceUrl, setVoiceUrl] = useState<string | null>(null);
   const [voiceMessage, setVoiceMessage] = useState('Press and hold when you are ready.');
-  const voiceCapture = useRef<VoiceCapture | null>(null);
-  const voiceUrlRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    return () => {
-      voiceCapture.current?.stream?.getTracks().forEach((track) => track.stop());
-      if (voiceUrlRef.current) URL.revokeObjectURL(voiceUrlRef.current);
-    };
-  }, []);
-
-  function say(word: WordEntry) {
-    player.speak(word.word);
-  }
-
-  function beginListen() {
-    player.speak(lesson.promptWord.word);
-    setLesson((current) => advanceLesson(current));
-  }
-
-  function chooseListenAnswer(selected: WordEntry) {
-    const correct = selected.id === lesson.promptWord.id;
-    setLesson((current) => answerListenPrompt(current, selected.id));
-    if (!correct) player.speak(lesson.promptWord.word);
-  }
-
-  function isSpeakKey(event: KeyboardEvent<HTMLButtonElement>) {
-    return event.key === ' ' || event.key === 'Spacebar' || event.key === 'Enter';
-  }
-
-  function handleSpeakKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
-    if (!isSpeakKey(event) || event.repeat) return;
-    event.preventDefault();
-    void startVoiceCapture();
-  }
-
-  function handleSpeakKeyUp(event: KeyboardEvent<HTMLButtonElement>) {
-    if (!isSpeakKey(event)) return;
-    event.preventDefault();
-    stopVoiceCapture();
-  }
-
-  function handleSpeakPointerDown(event: ReactPointerEvent<HTMLButtonElement>) {
-    if (event.pointerType === 'mouse' && event.button !== 0) return;
-    event.preventDefault();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    void startVoiceCapture();
-  }
-
-  function handleSpeakPointerEnd(event: ReactPointerEvent<HTMLButtonElement>) {
-    event.preventDefault();
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-    stopVoiceCapture();
-  }
-
-  function makeSpeakingSkippable(message: string) {
-    setLesson((current) => allowSpeakingSkip(stopSpeaking(current)));
-    setVoiceMessage(message);
-  }
-
+  const voiceCapture = useRef<VoiceCapture | null>(null); const voiceUrlRef = useRef<string | null>(null);
+  useEffect(() => () => { voiceCapture.current?.stream?.getTracks().forEach((track) => track.stop()); if (voiceUrlRef.current) URL.revokeObjectURL(voiceUrlRef.current); }, []);
+  const say = (word: WordEntry) => player.speak(word.word);
+  const moveNext = () => setLesson((current) => advanceLesson(current));
+  const isSpeakKey = (event: KeyboardEvent<HTMLButtonElement>) => event.key === ' ' || event.key === 'Spacebar' || event.key === 'Enter';
+  const handleSpeakKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => { if (!isSpeakKey(event) || event.repeat) return; event.preventDefault(); void startVoiceCapture(); };
+  const handleSpeakKeyUp = (event: KeyboardEvent<HTMLButtonElement>) => { if (!isSpeakKey(event)) return; event.preventDefault(); stopVoiceCapture(); };
+  const handleSpeakPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => { if (event.pointerType === 'mouse' && event.button !== 0) return; event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); void startVoiceCapture(); };
+  const handleSpeakPointerEnd = (event: ReactPointerEvent<HTMLButtonElement>) => { event.preventDefault(); if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); stopVoiceCapture(); };
+  function makeSpeakingSkippable(message: string) { setLesson((current) => allowSpeakingSkip(stopSpeaking(current))); setVoiceMessage(message); }
   async function startVoiceCapture() {
     if (voiceCapture.current || lesson.speakingOutcome) return;
-
-    if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
-      makeSpeakingSkippable('Microphone recording is not available here. You can skip this turn.');
-      return;
-    }
-
-    if (voiceUrlRef.current) {
-      URL.revokeObjectURL(voiceUrlRef.current);
-      voiceUrlRef.current = null;
-      setVoiceUrl(null);
-    }
-
-    const capture: VoiceCapture = { chunks: [], stopWhenReady: false };
-    voiceCapture.current = capture;
-    setLesson((current) => startSpeaking(current));
-    setVoiceMessage('Listening… let go when you finish.');
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      capture.stream = stream;
-      const recorder = new MediaRecorder(stream);
-      capture.recorder = recorder;
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) capture.chunks.push(event.data);
-      };
-      recorder.onstop = () => finishVoiceCapture(capture);
-      recorder.start();
-      if (capture.stopWhenReady) stopVoiceCapture();
-    } catch {
-      finishVoiceCapture(capture, 'Microphone access was blocked. You can skip this turn.');
-    }
+    if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) { makeSpeakingSkippable('Microphone recording is not available. You can keep going.'); return; }
+    if (voiceUrlRef.current) { URL.revokeObjectURL(voiceUrlRef.current); voiceUrlRef.current = null; setVoiceUrl(null); }
+    const capture: VoiceCapture = { chunks: [], stopWhenReady: false }; voiceCapture.current = capture; setLesson((current) => startSpeaking(current)); setVoiceMessage('Listening… let go when you finish.');
+    try { const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); capture.stream = stream; const recorder = new MediaRecorder(stream); capture.recorder = recorder; recorder.ondataavailable = (event) => { if (event.data.size) capture.chunks.push(event.data); }; recorder.onstop = () => finishVoiceCapture(capture); recorder.start(); if (capture.stopWhenReady) stopVoiceCapture(); }
+    catch { finishVoiceCapture(capture, 'Microphone access was blocked. You can keep going.'); }
   }
+  function stopVoiceCapture() { const capture = voiceCapture.current; setLesson((current) => stopSpeaking(current)); if (!capture) return; if (!capture.recorder) { capture.stopWhenReady = true; return; } if (capture.recorder.state === 'recording') capture.recorder.stop(); }
+  function finishVoiceCapture(capture: VoiceCapture, error?: string) { if (voiceCapture.current !== capture) return; capture.stream?.getTracks().forEach((track) => track.stop()); voiceCapture.current = null; if (error || !capture.chunks.length) { makeSpeakingSkippable(error ?? 'Try once more, or keep going.'); return; } const type = capture.recorder?.mimeType || capture.chunks[0].type || 'audio/webm'; const url = URL.createObjectURL(new Blob(capture.chunks, { type })); voiceUrlRef.current = url; setVoiceUrl(url); setLesson((current) => completeSpeaking(current)); setVoiceMessage('We heard your voice. Lovely speaking!'); }
 
-  function stopVoiceCapture() {
-    const capture = voiceCapture.current;
-    setLesson((current) => stopSpeaking(current));
+  if (lesson.step === 'reward') return <section className="screen reward-screen" aria-labelledby="reward-title"><div className="reward-badge" aria-hidden="true">★</div><p className="eyebrow">Level {level} complete · +3 stars</p><h1 id="reward-title">Quest complete!</h1><p className="intro">New word stickers are waiting for you.</p><button className="primary-action" type="button" onClick={() => onComplete(lesson)}>Collect rewards</button></section>;
+  const stepNumber = steps.indexOf(lesson.step) + 1;
+  const gameTitles = { 'listen-picture': 'Sound safari', match: 'Picture match', memory: 'Memory peek', sort: 'Theme sorter' };
+  const useText = lesson.promptWord.theme === 'colors'
+    ? `Find something ${lesson.promptWord.word}.`
+    : lesson.promptWord.theme === 'food' || lesson.promptWord.theme === 'fruits'
+      ? `Put the ${lesson.promptWord.word} on the picnic table.`
+      : `Find the ${lesson.promptWord.word}.`;
 
-    if (!capture) return;
-    if (!capture.recorder) {
-      capture.stopWhenReady = true;
-      return;
-    }
-    if (capture.recorder.state === 'recording') capture.recorder.stop();
-  }
-
-  function finishVoiceCapture(capture: VoiceCapture, errorMessage?: string) {
-    if (voiceCapture.current !== capture) return;
-
-    capture.stream?.getTracks().forEach((track) => track.stop());
-    voiceCapture.current = null;
-
-    if (errorMessage || capture.chunks.length === 0) {
-      makeSpeakingSkippable(errorMessage ?? 'No voice was captured. Try again or skip this turn.');
-      return;
-    }
-
-    const type = capture.recorder?.mimeType || capture.chunks[0].type || 'audio/webm';
-    const nextUrl = URL.createObjectURL(new Blob(capture.chunks, { type }));
-    voiceUrlRef.current = nextUrl;
-    setVoiceUrl(nextUrl);
-    setLesson((current) => completeSpeaking(current));
-    setVoiceMessage('Great speaking! You can listen back or finish the lesson.');
-  }
-
-  function handleSkipSpeaking() {
-    setLesson((current) => skipSpeaking(current));
-    setVoiceMessage('Speaking skipped for this turn.');
-  }
-
-  if (lesson.step === 'reward') {
-    return (
-      <section className="screen reward-screen" aria-labelledby="reward-title">
-        <div className="reward-badge" aria-hidden="true">★</div>
-        <p className="eyebrow">Level {level} complete</p>
-        <h1 id="reward-title">Sticker earned!</h1>
-        <p className="intro">You explored {lesson.words.map((word) => word.word).join(', ')}.</p>
-        <button className="primary-action" type="button" onClick={onComplete}>Back to theme</button>
-      </section>
-    );
-  }
-
-  const stepNumber = lesson.step === 'learn' ? 1 : lesson.step === 'listen' ? 2 : 3;
-
-  return (
-    <section className="screen lesson-screen" aria-labelledby="lesson-title">
-      <div className="lesson-toolbar">
-        <button className="text-button" type="button" onClick={onBack}>Back</button>
-        <div className="step-meter" aria-label={`Step ${stepNumber} of 3`}>
-          {[1, 2, 3].map((step) => <span className={step <= stepNumber ? 'is-active' : ''} key={step} />)}
-        </div>
-      </div>
-
-      <div className="screen-heading lesson-heading">
-        <p className="eyebrow">{theme.title} · Level {level} · 4 surprise words</p>
-        <h1 id="lesson-title">
-          {lesson.step === 'learn' && 'Look, tap, listen'}
-          {lesson.step === 'listen' && `Can you find “${lesson.promptWord.word}”?`}
-          {lesson.step === 'speak' && `Your turn: say “${lesson.promptWord.word}”`}
-        </h1>
-      </div>
-
-      {lesson.step === 'learn' && (
-        <>
-          <div className="word-grid lesson-word-grid">
-            {lesson.words.map((word) => <WordCard key={word.id} word={word} onClick={say} />)}
-          </div>
-          <button className="primary-action lesson-next" type="button" onClick={beginListen}>Ready for a listening game</button>
-        </>
-      )}
-
-      {lesson.step === 'listen' && (
-        <>
-          <button className="sound-button" type="button" onClick={() => player.speak(lesson.promptWord.word)}>
-            <span aria-hidden="true">▶</span> Play the word again
-          </button>
-          <div className="word-grid lesson-word-grid listen-grid">
-            {lesson.listenOptions.map((word) => (
-              <WordCard
-                key={word.id}
-                word={word}
-                actionLabel="Choose"
-                concealLabel
-                selected={lesson.feedback === 'correct' && word.id === lesson.promptWord.id}
-                onClick={chooseListenAnswer}
-              />
-            ))}
-          </div>
-          <p className="feedback" role="status">
-            {lesson.feedback === 'correct' ? 'You found it! Great listening.' : lesson.feedback === 'try-again' ? 'Good try. Listen once more.' : 'Choose the picture you heard.'}
-          </p>
-          <button className="primary-action lesson-next" type="button" disabled={lesson.feedback !== 'correct'} onClick={() => setLesson((current) => advanceLesson(current))}>Next: speaking</button>
-        </>
-      )}
-
-      {lesson.step === 'speak' && (
-        <div className="speak-panel">
-          <div className="speak-art" aria-hidden="true"><img src={lesson.promptWord.image} alt="" /></div>
-          <div>
-            <p className="speak-label">{lesson.promptWord.word}</p>
-            <p className="intro">{lesson.promptWord.sentence}</p>
-          </div>
-          <button className="sound-button compact" type="button" onClick={() => player.speak(lesson.promptWord.word)}>Hear the word</button>
-          <button
-            className={`mic-button${lesson.isRecording ? ' is-recording' : ''}${lesson.speakingOutcome ? ' is-complete' : ''}`}
-            type="button"
-            aria-pressed={lesson.isRecording}
-            disabled={Boolean(lesson.speakingOutcome)}
-            onPointerDown={handleSpeakPointerDown}
-            onPointerUp={handleSpeakPointerEnd}
-            onPointerCancel={handleSpeakPointerEnd}
-            onContextMenu={(event) => event.preventDefault()}
-            onKeyDown={handleSpeakKeyDown}
-            onKeyUp={handleSpeakKeyUp}
-          >
-            {lesson.isRecording ? 'Listening… let go' : lesson.speakingOutcome === 'recorded' ? 'Speaking complete ✓' : 'Press and hold to speak'}
-          </button>
-          <p className="feedback" role="status" aria-live="polite">{voiceMessage}</p>
-          {voiceUrl && <audio className="voice-playback" controls src={voiceUrl} aria-label="Hear your voice" />}
-          {lesson.canSkipSpeaking && !lesson.speakingOutcome && (
-            <button className="skip-action" type="button" onClick={handleSkipSpeaking}>Skip speaking this time</button>
-          )}
-          <button className="primary-action lesson-next" type="button" disabled={!lesson.speakingOutcome} onClick={() => setLesson((current) => advanceLesson(current))}>Finish lesson</button>
-        </div>
-      )}
-    </section>
-  );
+  return <section className="screen lesson-screen" aria-labelledby="lesson-title">
+    <div className="lesson-toolbar"><button className="text-button" type="button" onClick={onBack}>Back</button><div className="step-meter" aria-label={`Step ${stepNumber} of 7`}>{steps.map((step, index) => <span className={index < stepNumber ? 'is-active' : ''} key={step} />)}</div></div>
+    <div className="screen-heading lesson-heading"><p className="eyebrow">{theme.title} · Level {level} · {lesson.step.replace('-', ' ')}</p><h1 id="lesson-title">{{ 'warm-up': 'Wake up your word memory', learn: 'Look, tap, listen', play: gameTitles[lesson.gameType], listen: `Can you find “${lesson.promptWord.word}”?`, speak: `Your turn: say “${lesson.promptWord.word}”`, use: 'Use it in a little world' }[lesson.step]}</h1></div>
+    {lesson.step === 'warm-up' && <><div className="word-grid lesson-word-grid">{lesson.warmUpWords.map((word) => <WordCard key={word.id} word={word} concealLabel={!policy.showSpelling} actionLabel="Remember" onClick={say} />)}</div><button className="primary-action lesson-next" type="button" onClick={moveNext}>I remember!</button></>}
+    {lesson.step === 'learn' && <><div className="word-grid lesson-word-grid">{lesson.words.map((word) => <WordCard key={word.id} word={word} concealLabel={!policy.showSpelling} onClick={say} />)}</div>{policy.showPhrases && <p className="activity-hint">Tap every picture to hear its word.</p>}<button className="primary-action lesson-next" type="button" onClick={moveNext}>Ready to play</button></>}
+    {lesson.step === 'play' && <div className="activity-panel"><p className="intro">{lesson.gameType === 'sort' ? `Which picture belongs in ${theme.title}?` : `Tap ${lesson.promptWord.word} to finish the game.`}</p><div className="word-grid lesson-word-grid listen-grid">{lesson.words.map((word) => <WordCard key={word.id} word={word} concealLabel actionLabel="Choose" selected={lesson.feedback === 'correct' && word.id === lesson.promptWord.id} onClick={() => setLesson((current) => completeActivity(current, word.id === current.promptWord.id))} />)}</div><p className="feedback" role="status">{lesson.feedback === 'try-again' ? 'Nice try. Have another look.' : lesson.feedback === 'correct' ? 'You found the match!' : 'Pick a picture.'}</p><button className="primary-action lesson-next" disabled={!lesson.activityResult.completed} type="button" onClick={moveNext}>Next: listening</button></div>}
+    {lesson.step === 'listen' && <><button className="sound-button" type="button" onClick={() => say(lesson.promptWord)} aria-label="Play the listening word"><span aria-hidden="true">▶</span> Play the word</button><div className="word-grid lesson-word-grid listen-grid">{lesson.listenOptions.map((word) => <WordCard key={word.id} word={word} actionLabel="Choose" concealLabel selected={lesson.feedback === 'correct' && word.id === lesson.promptWord.id} onClick={() => { const correct = word.id === lesson.promptWord.id; setLesson((current) => answerListenPrompt(current, word.id)); if (!correct) say(lesson.promptWord); }} />)}</div><p className="feedback" role="status">{lesson.feedback === 'correct' ? 'You found it! Great listening.' : lesson.feedback === 'try-again' ? 'Good try. Listen once more.' : 'Choose the picture you heard.'}</p><button className="primary-action lesson-next" disabled={lesson.feedback !== 'correct'} type="button" onClick={moveNext}>Next: speaking</button></>}
+    {lesson.step === 'speak' && <div className="speak-panel"><div className="speak-art" aria-hidden="true"><img src={lesson.promptWord.image} alt="" /></div><p className="speak-label">{lesson.promptWord.word}</p><button className="sound-button compact" type="button" onClick={() => say(lesson.promptWord)}>Hear the word</button><button className={`mic-button${lesson.isRecording ? ' is-recording' : ''}`} type="button" aria-pressed={lesson.isRecording} disabled={Boolean(lesson.speakingOutcome)} onPointerDown={handleSpeakPointerDown} onPointerUp={handleSpeakPointerEnd} onPointerCancel={handleSpeakPointerEnd} onContextMenu={(event) => event.preventDefault()} onKeyDown={handleSpeakKeyDown} onKeyUp={handleSpeakKeyUp}>{lesson.isRecording ? 'Listening… let go' : lesson.speakingOutcome ? 'Speaking complete ✓' : 'Press and hold to speak'}</button><p className="feedback" role="status">{voiceMessage}</p>{voiceUrl && <audio className="voice-playback" controls src={voiceUrl} aria-label="Hear your voice" />}{lesson.canSkipSpeaking && !lesson.speakingOutcome && <button className="skip-action" type="button" onClick={() => setLesson((current) => skipSpeaking(current))}>Keep going without recording</button>}<button className="primary-action lesson-next" disabled={!lesson.speakingOutcome} type="button" onClick={moveNext}>Next: use the word</button></div>}
+    {lesson.step === 'use' && <div className="use-card"><img src={lesson.promptWord.image} alt="" /><p className="use-command">{useText}</p><button className="sound-button compact" type="button" disabled aria-label="Sentence audio is not available">Sentence audio coming soon</button><button className="primary-action" type="button" onClick={moveNext}>I did it!</button></div>}
+  </section>;
 }
