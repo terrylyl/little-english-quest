@@ -33,7 +33,7 @@ async function completeFirstAnimalLevel(page: Page) {
   await expect(page.getByRole('status')).toContainText('heard your voice');
   await expect(page.getByRole('button', { name: /Next: use the word/ })).toBeEnabled();
   await page.getByRole('button', { name: /Next: use the word/ }).click();
-  await page.getByRole('button', { name: /I did it/ }).click();
+  await page.getByRole('button', { name: /I said it/ }).click();
 }
 
 test('home screen shows six local illustrated learning worlds', async ({ page }) => {

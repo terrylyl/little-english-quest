@@ -8,6 +8,7 @@ export type WordEntry = {
   word: string;
   zh: string;
   sentence: string;
+  sentenceZh: string;
   theme: ThemeId;
   level: LevelNumber;
   image: string;
@@ -309,17 +310,23 @@ function articleFor(word: string): 'a' | 'an' {
 }
 
 function makeSentence(theme: ThemeId, word: string): string {
+  if (theme === 'animals') return `Look at the ${word}.`;
+  if (theme === 'fruits') return `I would like ${articleFor(word)} ${word}.`;
   if (theme === 'food') {
-    if (pluralFood.has(word)) {
-      return `These are ${word}.`;
-    }
-
-    if (uncountableFood.has(word)) {
-      return `This is ${word}.`;
-    }
+    if (pluralFood.has(word) || uncountableFood.has(word)) return `I like ${word}.`;
+    return `Can I have ${articleFor(word)} ${word}?`;
   }
+  if (theme === 'toys') return `Let's play with the ${word}.`;
+  if (theme === 'colors') return `My favorite color is ${word}.`;
+  return `I can see ${articleFor(word)} ${word}.`;
+}
 
-  return `This is ${articleFor(word)} ${word}.`;
+function makeSentenceZh(theme: ThemeId, zh: string): string {
+  if (theme === 'animals') return `看看这只${zh}。`;
+  if (theme === 'fruits') return `我想要一个${zh}。`;
+  if (theme === 'food' || theme === 'colors') return `我喜欢${zh}。`;
+  if (theme === 'toys') return `我们玩${zh}吧。`;
+  return `我看到${zh}了。`;
 }
 
 function slugify(word: string): string {
@@ -332,6 +339,7 @@ function makeWords(theme: ThemeId): WordEntry[] {
     word,
     zh,
     sentence: makeSentence(theme, word),
+    sentenceZh: makeSentenceZh(theme, zh),
     theme,
     level,
     image: `./illustrations/${theme}/${slugify(word)}.svg`

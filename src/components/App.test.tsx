@@ -134,7 +134,7 @@ describe('App flow', () => {
     expect(screen.getByRole('button', { name: /Next: use the word/ })).toBeEnabled();
 
     await user.click(screen.getByRole('button', { name: /Next: use the word/ }));
-    await user.click(screen.getByRole('button', { name: /I did it/ }));
+    await user.click(screen.getByRole('button', { name: /I said it/ }));
     expect(screen.getByRole('heading', { name: /Quest complete/ })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Collect rewards/ }));
     expect(localStorage.getItem('little-english-progress-v2')).toContain('animals-sticker-1');
