@@ -3,12 +3,16 @@ export type LevelNumber = 1 | 2 | 3 | 4 | 5;
 
 export const LEVEL_NUMBERS = [1, 2, 3, 4, 5] as const satisfies readonly LevelNumber[];
 
+export type ExampleKind = 'request' | 'action' | 'description' | 'question';
+export type ExampleSentence = { text: string; zh: string; kind: ExampleKind };
+
 export type WordEntry = {
   id: string;
   word: string;
   zh: string;
   sentence: string;
   sentenceZh: string;
+  examples: ExampleSentence[];
   theme: ThemeId;
   level: LevelNumber;
   image: string;
@@ -309,24 +313,41 @@ function articleFor(word: string): 'a' | 'an' {
   return /^[aeiou]/.test(word) ? 'an' : 'a';
 }
 
-function makeSentence(theme: ThemeId, word: string): string {
-  if (theme === 'animals') return `Look at the ${word}.`;
-  if (theme === 'fruits') return `I would like ${articleFor(word)} ${word}.`;
+function makeExamples(theme: ThemeId, word: string, zh: string): ExampleSentence[] {
+  if (theme === 'animals') return [
+    { text: `Look at the ${word}.`, zh: `看看这只${zh}。`, kind: 'action' },
+    { text: `Can you find the ${word}?`, zh: `你能找到${zh}吗？`, kind: 'question' },
+    { text: `The ${word} is over there.`, zh: `${zh}就在那边。`, kind: 'description' }
+  ];
+  if (theme === 'fruits') return [
+    { text: `I would like ${articleFor(word)} ${word}.`, zh: `我想要一个${zh}。`, kind: 'request' },
+    { text: `Let's share the ${word}.`, zh: `我们一起分享${zh}吧。`, kind: 'action' },
+    { text: `Do you like ${word}?`, zh: `你喜欢${zh}吗？`, kind: 'question' }
+  ];
   if (theme === 'food') {
-    if (pluralFood.has(word) || uncountableFood.has(word)) return `I like ${word}.`;
-    return `Can I have ${articleFor(word)} ${word}?`;
+    const first = pluralFood.has(word) || uncountableFood.has(word)
+      ? { text: `I like ${word}.`, zh: `我喜欢${zh}。`, kind: 'description' as const }
+      : { text: `Can I have ${articleFor(word)} ${word}?`, zh: `我可以要一份${zh}吗？`, kind: 'request' as const };
+    return [first,
+      { text: `Let's get the ${word} ready.`, zh: `我们把${zh}准备好吧。`, kind: 'action' },
+      { text: `Do you like ${word}?`, zh: `你喜欢${zh}吗？`, kind: 'question' }
+    ];
   }
-  if (theme === 'toys') return `Let's play with the ${word}.`;
-  if (theme === 'colors') return `My favorite color is ${word}.`;
-  return `I can see ${articleFor(word)} ${word}.`;
-}
-
-function makeSentenceZh(theme: ThemeId, zh: string): string {
-  if (theme === 'animals') return `看看这只${zh}。`;
-  if (theme === 'fruits') return `我想要一个${zh}。`;
-  if (theme === 'food' || theme === 'colors') return `我喜欢${zh}。`;
-  if (theme === 'toys') return `我们玩${zh}吧。`;
-  return `我看到${zh}了。`;
+  if (theme === 'toys') return [
+    { text: `Let's play with the ${word}.`, zh: `我们玩${zh}吧。`, kind: 'action' },
+    { text: `Can I use the ${word}?`, zh: `我可以用这个${zh}吗？`, kind: 'request' },
+    { text: `Put the ${word} over here.`, zh: `把${zh}放到这里。`, kind: 'action' }
+  ];
+  if (theme === 'colors') return [
+    { text: `My favorite color is ${word}.`, zh: `我最喜欢${zh}。`, kind: 'description' },
+    { text: `This one is ${word}.`, zh: `这个是${zh}的。`, kind: 'description' },
+    { text: `Can you find something ${word}?`, zh: `你能找到${zh}的东西吗？`, kind: 'question' }
+  ];
+  return [
+    { text: `I can see ${articleFor(word)} ${word}.`, zh: `我看到${zh}了。`, kind: 'description' },
+    { text: `Here comes the ${word}.`, zh: `${zh}开过来了。`, kind: 'description' },
+    { text: `Where is the ${word}?`, zh: `${zh}在哪里？`, kind: 'question' }
+  ];
 }
 
 function slugify(word: string): string {
@@ -334,16 +355,18 @@ function slugify(word: string): string {
 }
 
 function makeWords(theme: ThemeId): WordEntry[] {
-  return words[theme].map(([word, zh, level]) => ({
-    id: `${theme}-${slugify(word)}`,
-    word,
-    zh,
-    sentence: makeSentence(theme, word),
-    sentenceZh: makeSentenceZh(theme, zh),
-    theme,
-    level,
-    image: `./illustrations/${theme}/${slugify(word)}.svg`
-  }));
+  return words[theme].map(([word, zh, level]) => {
+    const examples = makeExamples(theme, word, zh);
+    return {
+      id: `${theme}-${slugify(word)}`,
+      word, zh,
+      sentence: examples[0].text,
+      sentenceZh: examples[0].zh,
+      examples,
+      theme, level,
+      image: `./illustrations/${theme}/${slugify(word)}.svg`
+    };
+  });
 }
 
 export const themes: Theme[] = [

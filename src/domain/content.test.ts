@@ -42,11 +42,19 @@ describe('content data', () => {
 
   it('gives every word a short everyday sentence and Chinese prompt', () => {
     for (const word of themes.flatMap((theme) => theme.words)) {
+      expect(word.examples).toHaveLength(3);
+      expect(new Set(word.examples.map((example) => example.kind)).size).toBeGreaterThanOrEqual(2);
       expect(word.sentence.length).toBeGreaterThan(5);
       expect(word.sentence.split(/\s+/).length).toBeLessThanOrEqual(9);
       expect(word.sentence.toLowerCase()).toContain(word.word.toLowerCase());
       expect(word.sentenceZh).toMatch(/[。？]$/);
       expect(word.sentenceZh).toContain(word.zh);
+      for (const example of word.examples) {
+        expect(example.text.toLowerCase()).toContain(word.word.toLowerCase());
+        expect(example.text.split(/\s+/).length).toBeLessThanOrEqual(9);
+        expect(example.zh).toContain(word.zh);
+        expect(example.zh).toMatch(/[。？]$/);
+      }
     }
   });
 

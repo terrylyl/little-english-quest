@@ -107,6 +107,17 @@ describe('App flow', () => {
     expect(document.querySelectorAll('.word-card__art img')).toHaveLength(50);
   });
 
+  it('cycles through different everyday sentences for a word', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await openAnimalLesson(user);
+    const firstSentence = document.querySelector('.copy-sentence strong')?.textContent;
+    expect(firstSentence).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: /Show another sentence/ }));
+    expect(document.querySelector('.copy-sentence strong')?.textContent).not.toBe(firstSentence);
+    expect(screen.getByText(/2\/3/)).toBeInTheDocument();
+  });
+
   it('does not allow a child to finish before speaking', async () => {
     const user = userEvent.setup();
     render(<App />);
