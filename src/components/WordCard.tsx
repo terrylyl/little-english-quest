@@ -4,8 +4,10 @@ type WordCardProps = {
   word: WordEntry;
   actionLabel?: string;
   selected?: boolean;
+  selectionControl?: boolean;
   incorrect?: boolean;
   concealLabel?: boolean;
+  accessibleLabel?: string;
   onClick: (word: WordEntry) => void;
 };
 
@@ -13,8 +15,10 @@ export function WordCard({
   word,
   actionLabel = 'Say',
   selected = false,
+  selectionControl = false,
   incorrect = false,
   concealLabel = false,
+  accessibleLabel,
   onClick
 }: WordCardProps) {
   return (
@@ -22,7 +26,9 @@ export function WordCard({
       className={`word-card${selected ? ' is-selected' : ''}${incorrect ? ' is-incorrect' : ''}`}
       type="button"
       onClick={() => onClick(word)}
-      aria-label={`${actionLabel} ${word.word}`}
+      aria-label={accessibleLabel ?? `${actionLabel} ${word.word}`}
+      aria-pressed={selectionControl ? selected : undefined}
+      aria-invalid={incorrect || undefined}
     >
       <span className="word-card__art" aria-hidden="true">
         <img src={word.image} alt="" loading="lazy" />

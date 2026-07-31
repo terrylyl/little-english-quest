@@ -28,22 +28,17 @@ async function advanceToSpeak(user: ReturnType<typeof userEvent.setup>) {
   await openAnimalLesson(user);
   expect(screen.getAllByRole('button', { name: /^Say / })).toHaveLength(4);
   await user.click(screen.getByRole('button', { name: /Ready to play/ }));
-  const gameHeading = screen.getByRole('heading').textContent ?? '';
-  expect(gameHeading).toBeTruthy();
-  const gamePrompt = screen.getByText(/Tap .+ to finish|Which picture belongs/).textContent ?? '';
-  const gameWord = gamePrompt.match(/Tap (.+) to finish/)?.[1];
-  if (gameWord) await user.click(screen.getByRole('button', { name: `Choose ${gameWord}` }));
-  else await user.click(screen.getAllByRole('button', { name: /^Choose / })[0]);
-  if (screen.getByRole('button', { name: /Next: listening/ }).hasAttribute('disabled')) {
-    const candidates = screen.getAllByRole('button', { name: /^Choose / });
-    for (const candidate of candidates) { if (!screen.getByRole('button', { name: /Next: listening/ }).hasAttribute('disabled')) break; await user.click(candidate); }
-  }
+  expect(screen.getByRole('heading', { name: 'Picture match' })).toBeInTheDocument();
+  const gamePrompt = screen.getByText(/Tap the picture for/).textContent ?? '';
+  const gameWord = gamePrompt.match(/Tap the picture for (.+)\./)?.[1];
+  expect(gameWord).toBeTruthy();
+  await user.click(screen.getByRole('button', { name: `Picture: ${gameWord}` }));
   await user.click(screen.getByRole('button', { name: /Next: listening/ }));
 
   const heading = screen.getByRole('heading', { name: /Can you find/ }).textContent ?? '';
   const promptWord = heading.match(/“(.+)”/)?.[1];
   expect(promptWord).toBeTruthy();
-  await user.click(screen.getByRole('button', { name: `Choose ${promptWord}` }));
+  await user.click(screen.getByRole('button', { name: `Picture: ${promptWord}` }));
   await user.click(screen.getByRole('button', { name: /Next: speaking/ }));
   return screen.getByRole('button', { name: /Press and hold to speak/ });
 }
@@ -118,7 +113,18 @@ describe('App flow', () => {
     expect(screen.getByText(/2\/3/)).toBeInTheDocument();
   });
 
-  it('does not allow a child to finish before speaking', async () => {
+  it('uses a continuous progress meter and accessible picture labels', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await openAnimalLesson(user);
+
+    expect(document.querySelector('.step-meter')).toHaveAttribute('aria-label', 'Step 1 of 6');
+    expect(screen.getByRole('button', { name: /^Say /, pressed: true })).toHaveAttribute('aria-pressed', 'true');
+    await user.click(screen.getByRole('button', { name: /Ready to play/ }));
+    expect(screen.getAllByRole('button', { name: /^Picture: / })).toHaveLength(4);
+  });
+
+  it('requires recording or an explicit skip before continuing', async () => {
     const user = userEvent.setup();
     render(<App />);
 
@@ -138,7 +144,7 @@ describe('App flow', () => {
     await waitFor(() => expect(MockMediaRecorder.instances[0].start).toHaveBeenCalled());
     fireEvent.keyUp(holdButton, { key: ' ', code: 'Space' });
 
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/heard your voice/));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/recording is ready/));
     expect(stopTrack).toHaveBeenCalled();
     expect(createObjectURL).toHaveBeenCalled();
     expect(screen.getByLabelText(/Hear your voice/)).toHaveAttribute('src', 'blob:recording');
@@ -171,6 +177,7 @@ describe('App flow', () => {
     const user = userEvent.setup();
     render(<App />);
     const holdButton = await advanceToSpeak(user);
+    expect(screen.getByRole('button', { name: /Keep going without recording/ })).toBeInTheDocument();
 
     fireEvent.keyDown(holdButton, { key: ' ', code: 'Space' });
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/blocked/));
@@ -178,5 +185,34 @@ describe('App flow', () => {
 
     await user.click(screen.getByRole('button', { name: /Keep going without recording/ }));
     expect(screen.getByRole('button', { name: /Next: use the word/ })).toBeEnabled();
+  });
+
+  it('explains when sound playback is unavailable', async () => {
+    Object.defineProperty(window, 'speechSynthesis', { configurable: true, value: undefined });
+    Object.defineProperty(window, 'SpeechSynthesisUtterance', { configurable: true, value: undefined });
+    const user = userEvent.setup();
+    render(<App />);
+    await openAnimalLesson(user);
+
+    await user.click(screen.getByRole('button', { name: /^Say /, pressed: true }));
+    expect(screen.getByText(/Sound is not available/)).toBeInTheDocument();
+  });
+
+  it('stops a microphone stream granted after leaving a lesson', async () => {
+    let grantMicrophone: ((stream: MediaStream) => void) | undefined;
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: { getUserMedia: vi.fn(() => new Promise<MediaStream>((resolve) => { grantMicrophone = resolve; })) }
+    });
+    const user = userEvent.setup();
+    render(<App />);
+    const holdButton = await advanceToSpeak(user);
+
+    fireEvent.keyDown(holdButton, { key: ' ', code: 'Space' });
+    await waitFor(() => expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalled());
+    await user.click(screen.getByRole('button', { name: 'Back' }));
+    expect(grantMicrophone).toBeDefined();
+    grantMicrophone?.({ getTracks: () => [{ stop: stopTrack }] } as unknown as MediaStream);
+    await waitFor(() => expect(stopTrack).toHaveBeenCalled());
   });
 });

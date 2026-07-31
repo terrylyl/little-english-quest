@@ -6,17 +6,17 @@ async function advanceToSpeaking(page: Page) {
   await page.getByRole('button', { name: /Start Level 1/ }).click();
   await expect(page.getByRole('button', { name: /^Say / })).toHaveCount(4);
   await page.getByRole('button', { name: /Ready to play/ }).click();
-  const gameChoices = page.getByRole('button', { name: /^Choose / });
-  for (const choice of await gameChoices.all()) {
-    if (await page.getByRole('button', { name: /Next: listening/ }).isEnabled()) break;
-    await choice.click();
-  }
+  await expect(page.getByRole('heading', { name: 'Picture match' })).toBeVisible();
+  const gamePrompt = await page.getByText(/Tap the picture for/).textContent();
+  const gameWord = gamePrompt?.match(/Tap the picture for (.+)\./)?.[1];
+  if (!gameWord) throw new Error('Picture match prompt did not contain a target word.');
+  await page.getByRole('button', { name: `Picture: ${gameWord}` }).click();
   await page.getByRole('button', { name: /Next: listening/ }).click();
 
   const heading = await page.getByRole('heading', { name: /Can you find/ }).textContent();
   const promptWord = heading?.match(/“(.+)”/)?.[1];
   if (!promptWord) throw new Error('Listen prompt did not contain a target word.');
-  await page.getByRole('button', { name: `Choose ${promptWord}` }).click();
+  await page.getByRole('button', { name: `Picture: ${promptWord}` }).click();
   await page.getByRole('button', { name: /Next: speaking/ }).click();
 }
 
@@ -30,7 +30,7 @@ async function completeFirstAnimalLevel(page: Page) {
   await expect(hold).toHaveAttribute('aria-pressed', 'true');
   await page.waitForTimeout(300);
   await page.mouse.up();
-  await expect(page.getByRole('status')).toContainText('heard your voice');
+  await expect(page.getByRole('status')).toContainText('recording is ready');
   await expect(page.getByRole('button', { name: /Next: use the word/ })).toBeEnabled();
   await page.getByRole('button', { name: /Next: use the word/ }).click();
   await page.getByRole('button', { name: /I said it/ }).click();

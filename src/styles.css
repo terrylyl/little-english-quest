@@ -12,6 +12,8 @@
   --coral: #ef6a58;
   --mint: #ccebd9;
   --blue: #bde9f2;
+  --muted: #5b7182;
+  --display: "Arial Rounded MT Bold", "Trebuchet MS", sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -110,8 +112,8 @@ h1 {
 .sound-button.compact { min-height: 48px; padding: 8px 18px; box-shadow: none; }
 
 .lesson-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 28px; }
-.step-meter { width: min(280px, 52vw); display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.step-meter span { height: 12px; border: 2px solid var(--ink); border-radius: 99px; background: var(--paper); }
+.step-meter { width: min(280px, 52vw); display: flex; gap: 8px; }
+.step-meter span { flex: 1; height: 12px; border: 2px solid var(--ink); border-radius: 99px; background: var(--paper); }
 .step-meter span.is-active { background: var(--yellow); }
 
 .action-row { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 26px; }
@@ -142,6 +144,7 @@ h1 {
 
 .lesson-next { width: min(430px, 100%); display: block; margin: 0 auto; }
 .feedback { min-height: 32px; margin: 16px auto; color: var(--teal); font-size: 1.18rem; font-weight: 900; text-align: center; }
+.audio-feedback { width: fit-content; max-width: 100%; margin: -12px 0 20px; padding: 8px 12px; border-radius: 12px; background: #fff1c7; color: var(--ink); font-weight: 800; }
 .sound-button { display: block; margin: 0 auto 24px; }
 
 .sticker-shelf { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 16px; }
@@ -206,6 +209,7 @@ h1 {
   .word-card__word { font-size: 1.18rem; }
   .word-card__meaning { font-size: .78rem; }
   .lesson-toolbar { margin-bottom: 22px; }
+  .step-meter { margin-right: 2px; }
   .speak-art { width: 180px; height: 180px; }
   .speak-art img { width: 140px; height: 140px; }
   .hero-art { width: 124px; height: 124px; }
@@ -214,4 +218,14 @@ h1 {
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .app-shell { background: var(--cream); }
+}
+
+@media (prefers-contrast: more) {
+  :root { --ink: #071d33; --paper: #fff; --cream: #fff; --muted: #28475c; }
+  .app-shell { background: var(--cream); }
+  .theme-tile, .word-card, .level-island, .primary-action, .secondary-action, .text-button, .sound-button, .mic-button, .skip-action, .copy-sentence, .use-card { border-width: 4px; }
 }
