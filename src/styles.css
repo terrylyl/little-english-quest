@@ -129,7 +129,7 @@ h1 {
 .word-grid { grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); margin-bottom: 28px; }
 .lesson-word-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .word-card { min-height: 224px; padding: 14px; display: grid; grid-template-rows: 1fr auto; place-items: center; border-radius: 26px; overflow: hidden; }
-.word-card__art { width: 100%; min-height: 142px; border-radius: 18px; background: #f5eee0; }
+.word-card__art { position: relative; width: 100%; min-height: 142px; border-radius: 18px; background: #f5eee0; overflow: hidden; }
 .word-card:nth-child(4n+2) .word-card__art { background: #e8f6ef; }
 .word-card:nth-child(4n+3) .word-card__art { background: #fff1c7; }
 .word-card:nth-child(4n+4) .word-card__art { background: #e7f1fb; }
@@ -140,6 +140,9 @@ h1 {
 .word-card__mystery { margin-top: 12px; color: #627887; font-size: .78rem; font-weight: 900; text-transform: uppercase; letter-spacing: .06em; }
 .word-card.is-selected { background: var(--mint); animation: happy-pop .38s ease-out; }
 .word-card.is-incorrect { animation: gentle-shake .3s ease-out; }
+.word-card.is-celebrating { background: var(--mint); animation: happy-pop .38s ease-out; }
+.word-card.is-celebrating .word-card__art img { animation: card-wake .5s ease-out both; }
+.word-card__magic { position: absolute; top: 9px; right: 8px; z-index: 1; padding: 5px 8px; border: 2px solid var(--ink); border-radius: 11px 11px 3px 11px; background: var(--yellow); color: var(--ink); font-size: .78rem; font-weight: 900; line-height: 1; transform: rotate(4deg); animation: magic-bubble .42s ease-out both; }
 .listen-grid .word-card { grid-template-rows: 1fr auto; }
 
 .lesson-next { width: min(430px, 100%); display: block; margin: 0 auto; }
@@ -181,6 +184,8 @@ h1 {
 @keyframes page-in { from { opacity: 0; transform: translateY(10px); } }
 @keyframes happy-pop { 0% { transform: scale(.86) rotate(-3deg); } 70% { transform: scale(1.05) rotate(2deg); } }
 @keyframes gentle-shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+@keyframes card-wake { 0% { transform: translateY(11px) scale(.88); } 58% { transform: translateY(-6px) scale(1.08); } 100% { transform: translateY(0) scale(1); } }
+@keyframes magic-bubble { from { opacity: 0; transform: translateY(10px) scale(.72) rotate(-4deg); } to { opacity: 1; transform: translateY(0) scale(1) rotate(4deg); } }
 @keyframes recording-pulse { 50% { box-shadow: 0 5px 0 var(--ink), 0 0 0 10px rgba(239,106,88,.18); } }
 
 @media (max-width: 820px) {

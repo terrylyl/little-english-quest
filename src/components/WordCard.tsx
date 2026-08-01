@@ -6,6 +6,7 @@ type WordCardProps = {
   selected?: boolean;
   selectionControl?: boolean;
   incorrect?: boolean;
+  celebrationMessage?: string;
   concealLabel?: boolean;
   accessibleLabel?: string;
   onClick: (word: WordEntry) => void;
@@ -17,13 +18,14 @@ export function WordCard({
   selected = false,
   selectionControl = false,
   incorrect = false,
+  celebrationMessage,
   concealLabel = false,
   accessibleLabel,
   onClick
 }: WordCardProps) {
   return (
     <button
-      className={`word-card${selected ? ' is-selected' : ''}${incorrect ? ' is-incorrect' : ''}`}
+      className={`word-card${selected ? ' is-selected' : ''}${incorrect ? ' is-incorrect' : ''}${celebrationMessage ? ' is-celebrating' : ''}`}
       type="button"
       onClick={() => onClick(word)}
       aria-label={accessibleLabel ?? `${actionLabel} ${word.word}`}
@@ -32,6 +34,7 @@ export function WordCard({
     >
       <span className="word-card__art" aria-hidden="true">
         <img src={word.image} alt="" loading="lazy" />
+        {celebrationMessage && <span className="word-card__magic">★ {celebrationMessage}</span>}
       </span>
       {!concealLabel && (
         <span className="word-card__copy">

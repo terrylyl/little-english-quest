@@ -124,6 +124,21 @@ describe('App flow', () => {
     expect(screen.getAllByRole('button', { name: /^Picture: / })).toHaveLength(4);
   });
 
+  it('wakes the correct picture with a small magic reaction', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await openAnimalLesson(user);
+    await user.click(screen.getByRole('button', { name: /Ready to play/ }));
+
+    const gamePrompt = screen.getByText(/Tap the picture for/).textContent ?? '';
+    const gameWord = gamePrompt.match(/Tap the picture for (.+)\./)?.[1];
+    expect(gameWord).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: `Picture: ${gameWord}` }));
+
+    expect(document.querySelector('.word-card.is-celebrating')).toHaveTextContent('★');
+    expect(screen.getByText(/Meow!|Woof!|Tweet!|Splash!|Hop hop!|Quack!|Moo!|Oink!|Neigh!|Baa!/)).toBeInTheDocument();
+  });
+
   it('requires recording or an explicit skip before continuing', async () => {
     const user = userEvent.setup();
     render(<App />);
