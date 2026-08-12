@@ -6,9 +6,9 @@ import { ThemeScreen } from './components/ThemeScreen';
 import { createSpeechPlayer } from './domain/audio';
 import { getDifficultyPolicy } from './domain/difficulty';
 import { getTheme, getThemeSummaries, themes, type LevelNumber, type ThemeId } from './domain/content';
-import type { LessonState } from './domain/lesson';
+import { getFlawlessWordIds, type LessonState } from './domain/lesson';
 import { selectLessonWords, selectWarmUpWords } from './domain/selection';
-import { completeLevel, loadProgress, saveProgress, updateWord } from './domain/progress';
+import { completeLevel, getLearnedWordIds, loadProgress, saveProgress, updateWord } from './domain/progress';
 
 type Route =
   | { name: 'home' }
@@ -24,13 +24,17 @@ export default function App() {
   function finishLevel(themeId: ThemeId, level: LevelNumber, lesson: LessonState) {
     setProgress((current) => {
       const now = new Date();
+      const flawless = new Set(getFlawlessWordIds(lesson));
       let nextProgress = current;
-      for (const word of lesson.words) nextProgress = updateWord(nextProgress, word.id, 'learned', now);
+      for (const word of lesson.words) {
+        const result = lesson.wordResults[word.id];
+        nextProgress = updateWord(nextProgress, word.id, 'learned', now);
+        for (let mistake = 0; mistake < (result?.listenMistakes ?? 0); mistake += 1) nextProgress = updateWord(nextProgress, word.id, 'listen-wrong', now);
+        if (result?.listenCleared) nextProgress = updateWord(nextProgress, word.id, 'listen-correct', now);
+        if (flawless.has(word.id)) nextProgress = updateWord(nextProgress, word.id, 'review-correct', now);
+      }
       for (const word of lesson.warmUpWords) nextProgress = updateWord(nextProgress, word.id, 'review-correct', now);
-      nextProgress = updateWord(nextProgress, lesson.promptWord.id, 'listen-correct', now);
-      if (lesson.mistakes) nextProgress = updateWord(nextProgress, lesson.promptWord.id, 'listen-wrong', now);
       if (lesson.speakingOutcome === 'recorded') nextProgress = updateWord(nextProgress, lesson.promptWord.id, 'spoke', now);
-      nextProgress = updateWord(nextProgress, lesson.promptWord.id, 'review-correct', now);
       nextProgress = completeLevel(nextProgress, themeId, level, lesson.words.map((word) => word.id), lesson.mistakes, now);
       saveProgress(nextProgress);
       return nextProgress;
@@ -39,9 +43,10 @@ export default function App() {
   }
 
   if (route.name === 'home') {
+    const learnedByTheme = Object.fromEntries(themes.map((item) => [item.id, getLearnedWordIds(progress, item.words.map((word) => word.id)).length])) as Record<ThemeId, number>;
     return (
       <main className="app-shell">
-        <Home themes={getThemeSummaries()} onSelectTheme={(themeId) => setRoute({ name: 'theme', themeId })} />
+        <Home themes={getThemeSummaries()} learnedByTheme={learnedByTheme} stars={progress.rewards.stars} onSelectTheme={(themeId) => setRoute({ name: 'theme', themeId })} />
       </main>
     );
   }

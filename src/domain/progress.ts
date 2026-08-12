@@ -4,6 +4,7 @@ import type { AgeBand } from './difficulty';
 
 const STORAGE_KEY = 'little-english-progress-v2';
 const LEGACY_STORAGE_KEY = 'little-english-progress-v1';
+export const LEVEL_STAR_REWARD = 3;
 const THEME_IDS = ['animals', 'fruits', 'food', 'toys', 'colors', 'vehicles'] as const satisfies readonly ThemeId[];
 
 export type RewardInventory = { stars: number; unlockedStickerIds: string[]; unlockedBadgeIds: string[] };
@@ -95,9 +96,11 @@ export function completeLevel(progress: ProgressState, themeId: ThemeId, level: 
     ...progress, recentTheme: themeId, previousLessonWordIds: wordIds,
     completedLevels: { ...progress.completedLevels, [themeId]: completed },
     stickers: { ...progress.stickers, [themeId]: stickers },
-    rewards: { ...progress.rewards, stars: progress.rewards.stars + 3, unlockedBadgeIds: [...new Set([...progress.rewards.unlockedBadgeIds, badgeId])] },
+    rewards: { ...progress.rewards, stars: progress.rewards.stars + LEVEL_STAR_REWARD, unlockedBadgeIds: [...new Set([...progress.rewards.unlockedBadgeIds, badgeId])] },
     lessonHistory: [...progress.lessonHistory, { id: `${now.toISOString()}-${themeId}-${level}`, completedAt: now.toISOString(), themeId, level, wordIds, mistakes }]
   };
 }
 
 export function getCompletedCount(progress: ProgressState, themeId: ThemeId): number { return new Set(progress.completedLevels[themeId]).size; }
+
+export function getLearnedWordIds(progress: ProgressState, wordIds: string[]): string[] { return wordIds.filter((id) => (progress.wordProgress[id]?.mastery ?? 0) > 0); }
