@@ -89,6 +89,13 @@ h1 {
 .theme-tile__art img { width: 128px; height: 128px; object-fit: contain; }
 .theme-tile__title, .word-card__word { margin-top: 12px; font-family: "Arial Rounded MT Bold", "Trebuchet MS", sans-serif; font-size: 2rem; font-weight: 900; line-height: 1.05; }
 .theme-tile__meta { margin-top: 7px; color: #587082; font-weight: 800; }
+.theme-tile__bar { height: 12px; margin-top: 11px; border: 2px solid var(--ink); border-radius: 99px; background: var(--paper); overflow: hidden; }
+.theme-tile__bar > span { display: block; width: var(--theme-progress, 0%); height: 100%; background: var(--theme-color); transition: width 320ms var(--ease-out); }
+.theme-tile.is-complete { background: color-mix(in srgb, var(--theme-color) 10%, var(--paper)); }
+
+.home-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px; }
+.star-bank { display: inline-flex; align-items: center; gap: 10px; margin: 0; padding: 10px 22px; border: 3px solid var(--ink); border-radius: 99px; background: var(--yellow); box-shadow: 0 6px 0 var(--ink); font-size: 1.5rem; font-weight: 900; }
+.star-bank strong { font-family: var(--display); font-size: 1.9rem; line-height: 1; }
 
 .primary-action, .secondary-action, .text-button, .sound-button, .mic-button, .skip-action {
   min-height: 60px;
@@ -154,9 +161,24 @@ h1 {
 .audio-feedback { width: fit-content; max-width: 100%; margin: -12px 0 20px; padding: 8px 12px; border-radius: 12px; background: #fff1c7; color: var(--ink); font-weight: 800; }
 .sound-button { display: block; margin: 0 auto 24px; }
 
-.sticker-shelf { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 16px; }
-.sticker { width: 48px; height: 48px; display: grid; place-items: center; border: 3px solid var(--ink); border-radius: 50%; background: var(--paper); color: #a9b8c2; font-size: 1.35rem; font-weight: 900; }
+.sticker-album { margin-top: 18px; }
+.sticker-album__count { margin: 0 0 11px; color: var(--muted); font-weight: 800; }
+.sticker-album__count strong { color: var(--teal); font-family: var(--display); font-size: 1.35rem; }
+.sticker-shelf { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.sticker { width: 52px; height: 52px; display: grid; place-items: center; border: 3px solid var(--ink); border-radius: 50%; background: var(--paper); overflow: hidden; }
+.sticker img { width: 34px; height: 34px; object-fit: contain; filter: grayscale(1); opacity: .2; }
 .sticker.is-earned, .reward-badge { background: var(--yellow); color: var(--ink); }
+.sticker.is-earned img { filter: none; opacity: 1; }
+
+.round-meter { display: flex; gap: 8px; margin-top: 18px; }
+.round-meter span { width: 36px; height: 11px; border: 2px solid var(--ink); border-radius: 99px; background: var(--paper); transition: background-color 180ms var(--ease-out); }
+.round-meter span.is-done { background: var(--mint); }
+.round-meter span.is-current { background: var(--yellow); }
+
+.reward-stickers { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.reward-sticker { width: 122px; display: grid; justify-items: center; gap: 8px; padding: 13px 8px; border: 3px solid var(--ink); border-radius: 22px; background: var(--paper); box-shadow: 0 6px 0 var(--ink); animation: sticker-drop .44s var(--ease-out) both; animation-delay: var(--sticker-delay, 0ms); }
+.reward-sticker img { width: 72px; height: 72px; object-fit: contain; }
+.reward-sticker span { font-family: var(--display); font-size: 1.05rem; font-weight: 900; text-transform: lowercase; overflow-wrap: anywhere; }
 
 .speak-panel, .reward-screen { display: grid; gap: 18px; justify-items: center; text-align: center; }
 .activity-panel { display: grid; justify-items: center; gap: 18px; }
@@ -193,6 +215,7 @@ h1 {
 @keyframes card-wake { 0% { transform: translateY(11px) scale(.88); } 58% { transform: translateY(-6px) scale(1.08); } 100% { transform: translateY(0) scale(1); } }
 @keyframes magic-bubble { from { opacity: 0; transform: translateY(10px) scale(.72) rotate(-4deg); } to { opacity: 1; transform: translateY(0) scale(1) rotate(4deg); } }
 @keyframes recording-ring { from { opacity: .65; transform: scale(.92); } to { opacity: 0; transform: scale(1.12); } }
+@keyframes sticker-drop { from { opacity: 0; transform: translateY(-14px) scale(.8) rotate(-6deg); } }
 
 @media (max-width: 820px) {
   .theme-grid { grid-template-columns: 1fr; }
@@ -221,6 +244,13 @@ h1 {
   .word-card__meaning { font-size: .78rem; }
   .lesson-toolbar { margin-bottom: 22px; }
   .step-meter { margin-right: 2px; }
+  .star-bank { padding: 8px 17px; font-size: 1.25rem; }
+  .star-bank strong { font-size: 1.55rem; }
+  .sticker { width: 44px; height: 44px; }
+  .sticker img { width: 28px; height: 28px; }
+  .round-meter span { width: 28px; }
+  .reward-sticker { width: 102px; padding: 10px 6px; }
+  .reward-sticker img { width: 58px; height: 58px; }
   .speak-art { width: 180px; height: 180px; }
   .speak-art img { width: 140px; height: 140px; }
   .hero-art { width: 124px; height: 124px; }
@@ -253,7 +283,9 @@ h1 {
   .word-card.is-incorrect,
   .word-card.is-celebrating .word-card__art img,
   .word-card__magic,
+  .reward-sticker,
   .reward-badge { animation: none; }
+  .theme-tile__bar > span, .round-meter span { transition: none; }
   .mic-button.is-recording,
   .mic-button.is-recording::after { animation: none; }
 }

@@ -24,23 +24,40 @@ async function openAnimalLesson(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: /Start Level 1/ }));
 }
 
+const ROUNDS = 4;
+const playPrompt = () => (screen.getByText(/Tap the picture for/).textContent ?? '').match(/Tap the picture for (.+)\./)?.[1] ?? '';
+const listenPrompt = () => (screen.getByRole('heading', { name: /Can you find/ }).textContent ?? '').match(/“(.+)”/)?.[1] ?? '';
+
+async function clearRounds(user: ReturnType<typeof userEvent.setup>, readPrompt: () => string, lastLabel: RegExp) {
+  const asked: string[] = [];
+  for (let round = 1; round <= ROUNDS; round += 1) {
+    const word = readPrompt();
+    expect(word).toBeTruthy();
+    asked.push(word);
+    await user.click(screen.getByRole('button', { name: `Picture: ${word}` }));
+    await user.click(screen.getByRole('button', { name: round === ROUNDS ? lastLabel : /Next word/ }));
+  }
+  return asked;
+}
+
 async function advanceToSpeak(user: ReturnType<typeof userEvent.setup>) {
   await openAnimalLesson(user);
   expect(screen.getAllByRole('button', { name: /^Say / })).toHaveLength(4);
   await user.click(screen.getByRole('button', { name: /Ready to play/ }));
   expect(screen.getByRole('heading', { name: 'Picture match' })).toBeInTheDocument();
-  const gamePrompt = screen.getByText(/Tap the picture for/).textContent ?? '';
-  const gameWord = gamePrompt.match(/Tap the picture for (.+)\./)?.[1];
-  expect(gameWord).toBeTruthy();
-  await user.click(screen.getByRole('button', { name: `Picture: ${gameWord}` }));
-  await user.click(screen.getByRole('button', { name: /Next: listening/ }));
-
-  const heading = screen.getByRole('heading', { name: /Can you find/ }).textContent ?? '';
-  const promptWord = heading.match(/“(.+)”/)?.[1];
-  expect(promptWord).toBeTruthy();
-  await user.click(screen.getByRole('button', { name: `Picture: ${promptWord}` }));
-  await user.click(screen.getByRole('button', { name: /Next: speaking/ }));
+  await clearRounds(user, playPrompt, /Next: listening/);
+  await clearRounds(user, listenPrompt, /Next: speaking/);
   return screen.getByRole('button', { name: /Press and hold to speak/ });
+}
+
+async function recordAndFinishLesson(user: ReturnType<typeof userEvent.setup>) {
+  const holdButton = await advanceToSpeak(user);
+  fireEvent.keyDown(holdButton, { key: ' ', code: 'Space' });
+  await waitFor(() => expect(MockMediaRecorder.instances[0].start).toHaveBeenCalled());
+  fireEvent.keyUp(holdButton, { key: ' ', code: 'Space' });
+  await waitFor(() => expect(screen.getByRole('button', { name: /Next: use the word/ })).toBeEnabled());
+  await user.click(screen.getByRole('button', { name: /Next: use the word/ }));
+  await user.click(screen.getByRole('button', { name: /I said it/ }));
 }
 
 describe('App flow', () => {
@@ -139,6 +156,40 @@ describe('App flow', () => {
     expect(screen.getByText(/Meow!|Woof!|Tweet!|Splash!|Hop hop!|Quack!|Moo!|Oink!|Neigh!|Baa!/)).toBeInTheDocument();
   });
 
+  it('asks for every lesson word before moving on to listening', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await openAnimalLesson(user);
+    await user.click(screen.getByRole('button', { name: /Ready to play/ }));
+
+    const asked: string[] = [];
+    for (let round = 1; round <= ROUNDS; round += 1) {
+      expect(document.querySelector('.lesson-heading .eyebrow')).toHaveTextContent(`word ${round} of ${ROUNDS}`);
+      expect(document.querySelectorAll('.round-meter span.is-done')).toHaveLength(round - 1);
+      const word = playPrompt();
+      asked.push(word);
+      expect(screen.getByRole('button', { name: round === ROUNDS ? /Next: listening/ : /Next word/ })).toBeDisabled();
+      await user.click(screen.getByRole('button', { name: `Picture: ${word}` }));
+      await user.click(screen.getByRole('button', { name: round === ROUNDS ? /Next: listening/ : /Next word/ }));
+    }
+
+    expect(new Set(asked).size).toBe(ROUNDS);
+    expect(screen.getByRole('heading', { name: /Can you find/ })).toBeInTheDocument();
+    expect(listenPrompt()).toBe(asked[0]);
+  });
+
+  it('keeps the heard word among the listening pictures every round', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await openAnimalLesson(user);
+    await user.click(screen.getByRole('button', { name: /Ready to play/ }));
+    await clearRounds(user, playPrompt, /Next: listening/);
+
+    const heard = await clearRounds(user, listenPrompt, /Next: speaking/);
+    expect(new Set(heard).size).toBe(ROUNDS);
+    expect(screen.getByRole('button', { name: /Press and hold to speak/ })).toBeInTheDocument();
+  });
+
   it('requires recording or an explicit skip before continuing', async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -170,6 +221,23 @@ describe('App flow', () => {
     expect(screen.getByRole('heading', { name: /Quest complete/ })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Collect rewards/ }));
     expect(localStorage.getItem('little-english-progress-v2')).toContain('animals-sticker-1');
+  });
+
+  it('turns every learned word into a sticker and shows the album filling up', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await recordAndFinishLesson(user);
+
+    expect(document.querySelectorAll('.reward-sticker')).toHaveLength(4);
+    await user.click(screen.getByRole('button', { name: /Collect rewards/ }));
+
+    expect(screen.getByLabelText(/Sticker album: 4 of 50 Animals words collected/)).toBeInTheDocument();
+    expect(document.querySelectorAll('.sticker.is-earned')).toHaveLength(4);
+
+    await user.click(screen.getByRole('button', { name: 'Home' }));
+    expect(screen.getByLabelText('3 stars collected')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Animals 4 of 50 words/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Fruits 0 of 50 words/ })).toBeInTheDocument();
   });
 
   it('ignores repeated keyboard presses while recording', async () => {

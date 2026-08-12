@@ -29,7 +29,7 @@ export function ThemeScreen({ theme, progress, onBack, onStart, onExplore }: The
         <p className="intro">
           {completedCount}/{LEVEL_NUMBERS.length} levels done
         </p>
-        <StickerShelf progress={progress} themeId={theme.id} />
+        <StickerShelf progress={progress} theme={theme} />
       </div>
       <div className="action-row">
         <button className="primary-action" type="button" onClick={() => onStart(nextLevel)}>

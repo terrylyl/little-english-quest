@@ -1,5 +1,28 @@
 import { expect, test, type Page } from '@playwright/test';
 
+const ROUNDS = 4;
+
+async function readPlayPrompt(page: Page) {
+  const prompt = await page.getByText(/Tap the picture for/).textContent();
+  const word = prompt?.match(/Tap the picture for (.+)\./)?.[1];
+  if (!word) throw new Error('Picture match prompt did not contain a target word.');
+  return word;
+}
+
+async function readListenPrompt(page: Page) {
+  const heading = await page.getByRole('heading', { name: /Can you find/ }).textContent();
+  const word = heading?.match(/“(.+)”/)?.[1];
+  if (!word) throw new Error('Listen prompt did not contain a target word.');
+  return word;
+}
+
+async function clearRounds(page: Page, readPrompt: (page: Page) => Promise<string>, lastLabel: RegExp) {
+  for (let round = 1; round <= ROUNDS; round += 1) {
+    await page.getByRole('button', { name: `Picture: ${await readPrompt(page)}` }).click();
+    await page.getByRole('button', { name: round === ROUNDS ? lastLabel : /Next word/ }).click();
+  }
+}
+
 async function advanceToSpeaking(page: Page) {
   await page.goto('/');
   await page.getByRole('button', { name: /Animals/ }).click();
@@ -7,17 +30,8 @@ async function advanceToSpeaking(page: Page) {
   await expect(page.getByRole('button', { name: /^Say / })).toHaveCount(4);
   await page.getByRole('button', { name: /Ready to play/ }).click();
   await expect(page.getByRole('heading', { name: 'Picture match' })).toBeVisible();
-  const gamePrompt = await page.getByText(/Tap the picture for/).textContent();
-  const gameWord = gamePrompt?.match(/Tap the picture for (.+)\./)?.[1];
-  if (!gameWord) throw new Error('Picture match prompt did not contain a target word.');
-  await page.getByRole('button', { name: `Picture: ${gameWord}` }).click();
-  await page.getByRole('button', { name: /Next: listening/ }).click();
-
-  const heading = await page.getByRole('heading', { name: /Can you find/ }).textContent();
-  const promptWord = heading?.match(/“(.+)”/)?.[1];
-  if (!promptWord) throw new Error('Listen prompt did not contain a target word.');
-  await page.getByRole('button', { name: `Picture: ${promptWord}` }).click();
-  await page.getByRole('button', { name: /Next: speaking/ }).click();
+  await clearRounds(page, readPlayPrompt, /Next: listening/);
+  await clearRounds(page, readListenPrompt, /Next: speaking/);
 }
 
 async function completeFirstAnimalLevel(page: Page) {
@@ -67,11 +81,14 @@ test('explore mode shows fifty illustrated animal words', async ({ page }) => {
 
 test('earned sticker persists after refresh', async ({ page }) => {
   await completeFirstAnimalLevel(page);
+  await expect(page.locator('.reward-sticker')).toHaveCount(4);
   await page.getByRole('button', { name: /Collect rewards/ }).click();
 
   await page.reload();
-  await page.getByRole('button', { name: /Animals/ }).click();
+  await expect(page.getByLabel('3 stars collected')).toBeVisible();
+  await page.getByRole('button', { name: /Animals 4 of 50 words/ }).click();
   await expect(page.getByText('1/5 levels done')).toBeVisible();
+  await expect(page.locator('.sticker.is-earned')).toHaveCount(4);
   await expect(page.getByRole('button', { name: /Level 1 Completed/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /Start Level 2/ })).toBeVisible();
 });
