@@ -1,4 +1,4 @@
-const CACHE_NAME = 'little-english-quest-v4';
+const CACHE_NAME = 'little-english-quest-v5';
 const appUrl = (path) => new URL(path, self.registration.scope).toString();
 const APP_SHELL = [
   './',
